@@ -1,8 +1,6 @@
-name: Go Test
+name: Test
 
 on:
-  push:
-    branches: [ master ]
   pull_request:
     branches: [ master ]
 
@@ -24,3 +22,12 @@ jobs:
         env:
           TOKEN: ${{ secrets.TOKEN }}
         run: go test -v ./...
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
