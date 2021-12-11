@@ -48,8 +48,6 @@ func openSession() {
 		panic(err)
 	}
 
-	session.LogLevel = discordgo.LogDebug
-
 	if err := session.Open(); err != nil {
 		panic(err)
 	}
