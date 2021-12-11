@@ -31,3 +31,9 @@ jobs:
         uses: golangci/golangci-lint-action@v2
         with:
           version: latest
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Commit Linter
+      uses: wagoid/commitlint-github-action@v2.0.3
+
