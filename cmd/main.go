@@ -13,7 +13,12 @@ import (
 var log = logrus.New()
 
 func main() {
-	s, err := discordgo.New("Bot " + os.Getenv("TOKEN"))
+	token := os.Getenv("TOKEN")
+	if token == "" {
+		log.Fatal("Missing TOKEN")
+	}
+
+	s, err := discordgo.New("Bot " + token)
 	if err != nil {
 		panic(err)
 	}
