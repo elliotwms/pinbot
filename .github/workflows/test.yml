@@ -27,16 +27,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
           version: latest
-
-  commitlint:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
-    - name: Commit Linter
-      uses: wagoid/commitlint-github-action@v2.0.3
+      - name: commitlint
+        uses: wagoid/commitlint-github-action@v2.0.3
