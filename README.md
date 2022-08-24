@@ -78,6 +78,7 @@ docker run -e TOKEN -e APPLICATION_ID ghcr.io/elliotwms/pinbot:{version}
 | `HEALTH_CHECK_ADDR` | Address to serve the `/v1/health/` endpoint on (e.g. `:8080`)                                        | `false`  |
 | `EXCLUDED_CHANNELS` | Comma-separated list of excluded channel IDs                                                         | `false`  |
 | `LOG_LEVEL`         | [Log level](https://github.com/sirupsen/logrus#level-logging). `trace` enables discord-go debug logs | `false`  |
+| `USER_ROLE`         | User role. Only users with this role will be able to pin messages. Defaults to `pinbot-user`         | `false`  |
 
 ## Testing
 
