@@ -118,7 +118,7 @@ func buildPinMessage(sourceChannel *discordgo.Channel, c *PinMessageCommand, m *
 		Color:       pinMessageColor,
 		Description: m.Content,
 		URL:         url,
-		Timestamp:   string(m.Timestamp),
+		Timestamp:   m.Timestamp.String(),
 	}
 
 	if c.PinnedBy != nil {

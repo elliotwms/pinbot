@@ -1,0 +1,7 @@
+services:
+  fake-discord:
+    image: ghcr.io/elliotwms/fakediscord:v0.4.1
+    ports:
+      - 8080:8080
+    volumes:
+      - ${PWD}/fakediscord.yaml:/config.yml:ro

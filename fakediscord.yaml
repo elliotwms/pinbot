@@ -1,0 +1,4 @@
+guilds:
+  - name: Test Guild
+    channels:
+      - name: foo

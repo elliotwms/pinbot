@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/elliotwms/fakediscord/pkg/fakediscord"
 	"github.com/elliotwms/pinbot/internal/config"
 )
 
@@ -19,6 +20,13 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	if v := os.Getenv("FAKEDISCORD"); v != "" {
+		fakediscord.Configure("http://localhost:8080/")
+
+		_ = os.Setenv("TOKEN", "token")
+		_ = os.Setenv("APPLICATION_ID", "appid")
+	}
+
 	config.Configure()
 	// enable testing with a single bot by allowing self-pins
 	config.SelfPinEnabled = true
@@ -31,8 +39,7 @@ func TestMain(m *testing.M) {
 	openSession()
 	defer closeSession()
 
-	m.Run()
-	os.Exit(0)
+	os.Exit(m.Run())
 }
 
 func openSession() {
@@ -41,6 +48,8 @@ func openSession() {
 	if err != nil {
 		panic(err)
 	}
+
+	session.LogLevel = discordgo.LogDebug
 
 	session.Identify.Intents = config.Intents
 
@@ -74,7 +83,7 @@ func deleteStaleGuilds() {
 			panic(err)
 		}
 
-		if t, err := guild.JoinedAt.Parse(); err != nil || time.Since(t) > 10*time.Minute {
+		if time.Since(guild.JoinedAt) > 10*time.Minute {
 			log.Printf("Deleting stale guild '%s'", guild.ID)
 			if _, err := session.GuildDelete(guild.ID); err != nil {
 				return

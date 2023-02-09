@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"os"
 	"testing"
 )
 
@@ -83,6 +84,10 @@ func TestPinSelfPinDisabled(t *testing.T) {
 }
 
 func TestPinClassicPinTriggersChannelImport(t *testing.T) {
+	if os.Getenv("FAKEDISCORD") != "" {
+		t.Skip("test incompatible with fakediscord")
+	}
+
 	given, when, then := NewPinStage(t)
 
 	given.
@@ -98,6 +103,10 @@ func TestPinClassicPinTriggersChannelImport(t *testing.T) {
 }
 
 func TestPinImportCommand(t *testing.T) {
+	if os.Getenv("FAKEDISCORD") != "" {
+		t.Skip("test incompatible with fakediscord")
+	}
+
 	given, when, then := NewPinStage(t)
 
 	given.
@@ -120,7 +129,8 @@ func TestPinImportCommandIgnoreAlreadyPinned(t *testing.T) {
 	given.
 		a_channel_named("test").and().
 		the_message_is_posted().and().
-		the_message_is_pinned()
+		the_message_is_pinned().and().
+		the_bot_should_react_with_successful_emoji()
 
 	when.
 		an_import_is_triggered()
@@ -130,6 +140,10 @@ func TestPinImportCommandIgnoreAlreadyPinned(t *testing.T) {
 }
 
 func TestPinWithImage(t *testing.T) {
+	if os.Getenv("FAKEDISCORD") != "" {
+		t.Skip("test incompatible with fakediscord: todo handle multipart/form-data")
+	}
+
 	given, when, then := NewPinStage(t)
 
 	given.
@@ -149,6 +163,10 @@ func TestPinWithImage(t *testing.T) {
 }
 
 func TestPinWithMultipleImage(t *testing.T) {
+	if os.Getenv("FAKEDISCORD") != "" {
+		t.Skip("test incompatible with fakediscord: todo handle multipart/form-data")
+	}
+
 	given, when, then := NewPinStage(t)
 
 	given.
@@ -169,6 +187,10 @@ func TestPinWithMultipleImage(t *testing.T) {
 }
 
 func TestPinWithFile(t *testing.T) {
+	if os.Getenv("FAKEDISCORD") != "" {
+		t.Skip("test incompatible with fakediscord: todo handle multipart/form-data")
+	}
+
 	given, when, then := NewPinStage(t)
 
 	given.
@@ -199,11 +221,15 @@ func TestPinInExcludedChannel(t *testing.T) {
 		the_message_is_reacted_to_with("📌")
 
 	then.
-		the_message_is_reacted_to_with("👀").and().
-		the_message_is_reacted_to_with("🚫")
+		the_bot_should_add_the_emoji("👀").and().
+		the_bot_should_add_the_emoji("🚫")
 }
 
 func TestPinPersistsEmbeds(t *testing.T) {
+	if os.Getenv("FAKEDISCORD") != "" {
+		t.Skip("test incompatible with fakediscord: todo url should create server-side embed")
+	}
+
 	given, when, then := NewPinStage(t)
 
 	given.
