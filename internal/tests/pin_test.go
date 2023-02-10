@@ -68,6 +68,8 @@ func TestPinAlreadyPinned(t *testing.T) {
 		the_bot_should_log_the_message_as_already_pinned()
 }
 
+// TestPinSelfPinDisabled tests the 'correct' behaviour of Pinbot when pinning its own messages.
+// Self-pin is enabled to allow testing via a single bot in a single server
 func TestPinSelfPinDisabled(t *testing.T) {
 	given, when, then := NewPinStage(t)
 
@@ -80,7 +82,7 @@ func TestPinSelfPinDisabled(t *testing.T) {
 		the_message_is_reacted_to_with("📌")
 
 	then.
-		the_message_is_reacted_to_with("🔄")
+		the_bot_should_add_the_emoji("🔄")
 }
 
 func TestPinClassicPinTriggersChannelImport(t *testing.T) {
