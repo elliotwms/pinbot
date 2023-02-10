@@ -2,6 +2,7 @@ package commandhandlers
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/elliotwms/pinbot/internal/config"
@@ -118,7 +119,7 @@ func buildPinMessage(sourceChannel *discordgo.Channel, c *PinMessageCommand, m *
 		Color:       pinMessageColor,
 		Description: m.Content,
 		URL:         url,
-		Timestamp:   m.Timestamp.String(),
+		Timestamp:   m.Timestamp.Format(time.RFC3339),
 	}
 
 	if c.PinnedBy != nil {
