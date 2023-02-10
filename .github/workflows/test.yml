@@ -29,6 +29,28 @@ jobs:
           TOKEN: ${{ secrets.TOKEN }}
           APPLICATION_ID: ${{ secrets.APPLICATION_ID }}
         run: go test -v ./...
+  test-fakediscord:
+    steps:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v2
+
+        - uses: isbang/compose-action@v1.4.1
+          with:
+            compose-file: "./compose.yaml"
+
+        - name: Set up Go
+          uses: actions/setup-go@v2
+          with:
+            go-version: 1.17
+
+        - name: Build
+          run: go build -v ./...
+
+        - name: Test
+          env:
+            USE_FAKEDISCORD: 1
+          run: go test -v ./...
   lint:
     name: lint
     runs-on: ubuntu-latest
