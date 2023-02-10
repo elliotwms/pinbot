@@ -48,7 +48,7 @@ jobs:
 
       - name: Test
         env:
-          USE_FAKEDISCORD: 1
+          FAKEDISCORD: 1
         run: go test -v ./...
   lint:
     name: lint
