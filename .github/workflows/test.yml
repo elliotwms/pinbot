@@ -30,8 +30,8 @@ jobs:
           APPLICATION_ID: ${{ secrets.APPLICATION_ID }}
         run: go test -v ./...
   test-fakediscord:
+    runs-on: ubuntu-latest
     steps:
-      runs-on: ubuntu-latest
       steps:
         - uses: actions/checkout@v2
 
