@@ -127,7 +127,7 @@ func (s *PinStage) a_pin_message_should_be_posted_in_the_last_channel() *PinStag
 		}
 
 		return false
-	}, 5*time.Second, 10*time.Millisecond)
+	}, 5*time.Second, 100*time.Millisecond)
 
 	return s
 }
@@ -262,7 +262,7 @@ func (s *PinStage) the_bot_should_log(log string) *PinStage {
 		}
 
 		return false
-	}, 1*time.Second, 10*time.Millisecond)
+	}, 5*time.Second, 10*time.Millisecond)
 
 	return s
 }

@@ -242,7 +242,7 @@ func TestPinPersistsEmbeds(t *testing.T) {
 		the_message_is_reacted_to_with("📌")
 
 	then.
+		the_bot_should_react_with_successful_emoji().and().
 		a_pin_message_should_be_posted_in_the_last_channel().and().
-		the_pin_message_should_have_n_embeds(2).and().
-		the_bot_should_react_with_successful_emoji()
+		the_pin_message_should_have_n_embeds(2)
 }
