@@ -146,7 +146,7 @@ func (s *PinStage) the_bot_should_add_the_emoji(emoji string) *PinStage {
 		}
 
 		return false
-	}, 5*time.Second, 1*time.Second)
+	}, 5*time.Second, 500*time.Millisecond)
 
 	return s
 }
