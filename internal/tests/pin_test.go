@@ -105,16 +105,13 @@ func TestPinClassicPinTriggersChannelImport(t *testing.T) {
 }
 
 func TestPinImportCommand(t *testing.T) {
-	if os.Getenv("FAKEDISCORD") != "" {
-		t.Skip("test incompatible with fakediscord")
-	}
-
 	given, when, then := NewPinStage(t)
 
 	given.
 		a_channel_named("test").and().
 		the_message_is_posted().and().
 		the_message_is_pinned().and().
+		the_bot_should_react_with_successful_emoji().and().
 		the_import_is_cleaned_up()
 
 	when.
