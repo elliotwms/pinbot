@@ -37,9 +37,12 @@ func TestMain(m *testing.M) {
 		discordgo.PermissionManageMessages
 
 	openSession()
-	defer closeSession()
 
-	os.Exit(m.Run())
+	code := m.Run()
+
+	closeSession()
+
+	os.Exit(code)
 }
 
 func openSession() {
@@ -104,10 +107,7 @@ func createGuild() {
 
 func closeSession() {
 	if shouldCleanupGuild {
-		_, err := session.GuildDelete(config.TestGuildID)
-		if err != nil {
-			panic(err)
-		}
+		_, _ = session.GuildDelete(config.TestGuildID)
 	}
 
 	if err := session.Close(); err != nil {
