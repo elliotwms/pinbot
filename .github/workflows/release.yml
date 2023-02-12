@@ -5,7 +5,7 @@ on:
       - master
 jobs:
   test:
-    uses: elliotwms/pinbot/.github/workflows/test.yml@master
+    uses: ./.github/workflows/test.yml
     secrets:
       TOKEN: ${{ secrets.TOKEN }}
       APPLICATION_ID: ${{ secrets.APPLICATION_ID }}
