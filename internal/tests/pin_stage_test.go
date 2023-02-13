@@ -278,3 +278,14 @@ func (s *PinStage) the_message_has_a_link() *PinStage {
 
 	return s
 }
+
+func (s *PinStage) the_message_has_n_embeds(n int) {
+	s.require.Eventually(func() bool {
+		m, err := s.session.ChannelMessage(s.channel.ID, s.message.ID)
+		if err != nil {
+			return false
+		}
+
+		return len(m.Embeds) == n
+	}, 5*time.Second, 500*time.Millisecond)
+}

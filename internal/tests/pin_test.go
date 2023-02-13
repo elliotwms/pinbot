@@ -238,7 +238,8 @@ func TestPinPersistsEmbeds(t *testing.T) {
 		a_channel_named("test").and().
 		a_message().and().
 		the_message_has_a_link().and(). // posting a message with a link will create an embed on the server-side
-		the_message_is_posted()
+		the_message_is_posted().and().
+		the_message_has_n_embeds(1) // account for delay in link embed arriving (via MESSAGE_UPDATE)
 
 	when.
 		the_message_is_reacted_to_with("📌")
