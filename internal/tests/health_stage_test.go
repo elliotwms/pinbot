@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/elliotwms/pinbot/internal/config"
@@ -54,10 +55,12 @@ func (s *HealthStage) the_bot_is_running() *HealthStage {
 }
 
 func (s *HealthStage) a_health_check_request_is_sent() {
-	req, err := http.NewRequest(http.MethodGet, "http://localhost:"+s.port+"/v1/health", nil)
-	s.require.NoError(err)
-	s.res, err = http.DefaultClient.Do(req)
-	s.require.NoError(err)
+	s.require.Eventually(func() bool {
+		var err error
+		s.res, err = http.Get("http://localhost:" + s.port + "/v1/health")
+
+		return err == nil
+	}, 1*time.Second, 10*time.Millisecond)
 }
 
 func (s *HealthStage) a_response_should_be_received_with_status_code(code int) {
