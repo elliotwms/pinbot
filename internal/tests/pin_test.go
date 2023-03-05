@@ -89,10 +89,6 @@ func TestPinSelfPinDisabled(t *testing.T) {
 }
 
 func TestPinClassicPinTriggersChannelImport(t *testing.T) {
-	if os.Getenv("FAKEDISCORD") != "" {
-		t.Skip("test incompatible with fakediscord")
-	}
-
 	given, when, then := NewPinStage(t)
 
 	given.
@@ -142,17 +138,14 @@ func TestPinImportCommandIgnoreAlreadyPinned(t *testing.T) {
 }
 
 func TestPinWithImage(t *testing.T) {
-	if os.Getenv("FAKEDISCORD") != "" {
-		t.Skip("test incompatible with fakediscord: todo handle multipart/form-data")
-	}
-
 	given, when, then := NewPinStage(t)
 
 	given.
 		a_channel_named("test").and().
 		a_message().and().
 		an_image_attachment().and().
-		the_message_is_posted()
+		the_message_is_posted().and().
+		the_message_has_n_attachments(1)
 
 	when.
 		the_message_is_reacted_to_with("📌")
@@ -165,10 +158,6 @@ func TestPinWithImage(t *testing.T) {
 }
 
 func TestPinWithMultipleImage(t *testing.T) {
-	if os.Getenv("FAKEDISCORD") != "" {
-		t.Skip("test incompatible with fakediscord: todo handle multipart/form-data")
-	}
-
 	given, when, then := NewPinStage(t)
 
 	given.
@@ -189,10 +178,6 @@ func TestPinWithMultipleImage(t *testing.T) {
 }
 
 func TestPinWithFile(t *testing.T) {
-	if os.Getenv("FAKEDISCORD") != "" {
-		t.Skip("test incompatible with fakediscord: todo handle multipart/form-data")
-	}
-
 	given, when, then := NewPinStage(t)
 
 	given.

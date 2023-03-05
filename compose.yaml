@@ -1,6 +1,6 @@
 services:
   fake-discord:
-    image: ghcr.io/elliotwms/fakediscord:v0.7.7
+    image: ghcr.io/elliotwms/fakediscord:v0.9.1
     ports:
       - 8080:8080
     volumes:
