@@ -3,7 +3,7 @@ module github.com/elliotwms/pinbot
 go 1.19
 
 require (
-	github.com/bwmarrin/discordgo v0.27.0
+	github.com/bwmarrin/discordgo v0.27.1
 	github.com/elliotwms/fakediscord v0.9.1
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/sirupsen/logrus v1.9.0
