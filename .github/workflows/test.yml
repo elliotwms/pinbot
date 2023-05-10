@@ -68,6 +68,9 @@ jobs:
         env:
           FAKEDISCORD: 1
         run: go test -v ./...
+      - name: Docker logs
+        if: failure()
+        run: docker compose logs
   lint:
     name: lint
     runs-on: ubuntu-latest
