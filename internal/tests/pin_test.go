@@ -71,9 +71,6 @@ func TestPinAlreadyPinned(t *testing.T) {
 // TestPinSelfPinDisabled tests the 'correct' behaviour of Pinbot when pinning its own messages.
 // Self-pin is enabled to allow testing via a single bot in a single server
 func TestPinSelfPinDisabled(t *testing.T) {
-	if os.Getenv("FAKEDISCORD") != "" {
-		t.Skip("test incompatible with fakediscord: requires user support")
-	}
 	given, when, then := NewPinStage(t)
 
 	given.
