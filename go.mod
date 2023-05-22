@@ -7,7 +7,7 @@ require (
 	github.com/elliotwms/fakediscord v0.11.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/sirupsen/logrus v1.9.2
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 )
 
 require (
