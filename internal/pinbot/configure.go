@@ -1,22 +1,25 @@
 package pinbot
 
 import (
+	"github.com/bwmarrin/discordgo"
 	"github.com/elliotwms/pinbot/internal/eventhandlers"
+	"github.com/sirupsen/logrus"
 )
 
 const logFieldHandler = "handler"
 
-func (bot *Bot) registerHandlers() func() {
+// RegisterHandlers registers the bot event handlers to an established session
+func RegisterHandlers(session *discordgo.Session, l *logrus.Entry) func() {
 	closers := []func(){
-		bot.session.AddHandler(eventhandlers.Ready(bot.log.WithField(logFieldHandler, "Ready"))),
-		bot.session.AddHandler(eventhandlers.MessageReactionAdd(bot.log.WithField(logFieldHandler, "MessageReactionAdd"))),
-		bot.session.AddHandler(eventhandlers.GuildCreate(bot.log.WithField(logFieldHandler, "GuildCreate"))),
-		bot.session.AddHandler(eventhandlers.InteractionCreate(bot.log.WithField(logFieldHandler, "InteractionCreate"))),
-		bot.session.AddHandler(eventhandlers.ChannelPinsUpdate(bot.log.WithField(logFieldHandler, "ChannelPinsUpdate"))),
+		session.AddHandler(eventhandlers.Ready(l.WithField(logFieldHandler, "Ready"))),
+		session.AddHandler(eventhandlers.MessageReactionAdd(l.WithField(logFieldHandler, "MessageReactionAdd"))),
+		session.AddHandler(eventhandlers.GuildCreate(l.WithField(logFieldHandler, "GuildCreate"))),
+		session.AddHandler(eventhandlers.InteractionCreate(l.WithField(logFieldHandler, "InteractionCreate"))),
+		session.AddHandler(eventhandlers.ChannelPinsUpdate(l.WithField(logFieldHandler, "ChannelPinsUpdate"))),
 	}
 
 	return func() {
-		bot.log.Debugf("Deregistering handlers (count: %d)", len(closers))
+		l.Debugf("Deregistering handlers (count: %d)", len(closers))
 		for _, closer := range closers {
 			closer()
 		}

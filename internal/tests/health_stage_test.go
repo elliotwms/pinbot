@@ -1,17 +1,16 @@
 package tests
 
 import (
+	"context"
 	"net/http"
-	"os"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/elliotwms/bot"
 	"github.com/elliotwms/pinbot/internal/config"
-	"github.com/elliotwms/pinbot/internal/pinbot"
 	"github.com/phayes/freeport"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,8 +23,6 @@ type HealthStage struct {
 }
 
 func NewHealthStage(t *testing.T) (*HealthStage, *HealthStage, *HealthStage) {
-	log := logrus.New()
-
 	p, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
@@ -36,16 +33,14 @@ func NewHealthStage(t *testing.T) (*HealthStage, *HealthStage, *HealthStage) {
 		port:    strconv.Itoa(p),
 	}
 
-	done := make(chan os.Signal, 1)
+	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
-		bot := pinbot.New(config.ApplicationID, session, log)
-		s.require.NoError(bot.WithHealthCheck(":" + s.port).Run(done))
+		b := bot.New(config.ApplicationID, session, log)
+		s.require.NoError(b.WithHealthCheck(":" + s.port).Run(ctx))
 	}()
 
-	t.Cleanup(func() {
-		done <- os.Interrupt
-	})
+	t.Cleanup(cancel)
 
 	return s, s, s
 }

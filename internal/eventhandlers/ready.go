@@ -5,8 +5,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type EventHandler func(log *logrus.Entry) func(*discordgo.Session, interface{})
-
 func Ready(log *logrus.Entry) func(s *discordgo.Session, _ *discordgo.Ready) {
 	return func(s *discordgo.Session, _ *discordgo.Ready) {
 		log.Info("I am ready for action")
