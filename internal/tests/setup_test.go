@@ -9,7 +9,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/elliotwms/fakediscord/pkg/fakediscord"
 	"github.com/elliotwms/pinbot/internal/config"
-	"github.com/elliotwms/pinbot/internal/pinbot"
 	"github.com/sirupsen/logrus"
 )
 
@@ -40,10 +39,6 @@ func TestMain(m *testing.M) {
 		discordgo.PermissionManageMessages
 
 	openSession()
-
-	// todo registered here to avoid registering the same handle multiple times. Should refactor this approach to
-	// register handlers natively within bot
-	pinbot.RegisterHandlers(session, logrus.NewEntry(log))
 
 	code := m.Run()
 

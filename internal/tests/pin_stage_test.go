@@ -11,6 +11,7 @@ import (
 	"github.com/elliotwms/bot"
 	"github.com/elliotwms/pinbot/internal/commandhandlers"
 	"github.com/elliotwms/pinbot/internal/config"
+	"github.com/elliotwms/pinbot/internal/eventhandlers"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
@@ -50,8 +51,11 @@ func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
+	b := bot.
+		New(config.ApplicationID, session, log).
+		WithHandlers(eventhandlers.List(logrus.NewEntry(s.log)))
+
 	go func() {
-		b := bot.New(config.ApplicationID, session, log)
 		s.require.NoError(b.Run(ctx))
 	}()
 
