@@ -81,7 +81,7 @@ func Output(showSensitive bool) logrus.Fields {
 		"INTENTS":           Intents,
 		"PERMISSIONS":       Permissions,
 		"install_url":       BuildInstallURL().String(),
-		"version":           build.Version(),
+		"version":           build.Version,
 	}
 
 	if showSensitive {

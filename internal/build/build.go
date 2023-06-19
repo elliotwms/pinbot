@@ -1,11 +1,5 @@
 package build
 
-var version = ""
-
-func Version() string {
-	if version != "" {
-		return version
-	}
-
-	return "develop"
-}
+// Version describes the build version
+// it should be set via ldflags when building
+var Version = "v0.0.0+unknown"
