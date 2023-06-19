@@ -1,13 +1,15 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/elliotwms/bot"
 	"github.com/elliotwms/pinbot/internal/config"
-	"github.com/elliotwms/pinbot/internal/pinbot"
+	"github.com/elliotwms/pinbot/internal/eventhandlers"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,20 +28,18 @@ func main() {
 		s.LogLevel = discordgo.LogDebug
 	}
 
-	bot := pinbot.New(config.ApplicationID, s, log)
-
-	if config.TestGuildID != "" {
-		bot.WithTestGuildID(config.TestGuildID)
-	}
+	b := bot.
+		New(config.ApplicationID, s, log).
+		WithHandlers(eventhandlers.List(logrus.NewEntry(log))).
+		WithConfigReporter(config.Output)
 
 	if config.HealthCheckAddr != "" {
-		bot.WithHealthCheck(config.HealthCheckAddr)
+		b.WithHealthCheck(config.HealthCheckAddr)
 	}
 
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 
-	if err := bot.StartSession(sc); err != nil {
+	if err := b.Run(ctx); err != nil {
 		os.Exit(1)
 	}
 }

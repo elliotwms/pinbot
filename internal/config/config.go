@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/elliotwms/pinbot/internal/build"
 	"github.com/sirupsen/logrus"
 )
 
@@ -80,6 +81,7 @@ func Output(showSensitive bool) logrus.Fields {
 		"INTENTS":           Intents,
 		"PERMISSIONS":       Permissions,
 		"install_url":       BuildInstallURL().String(),
+		"version":           build.Version,
 	}
 
 	if showSensitive {

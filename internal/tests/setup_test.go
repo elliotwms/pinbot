@@ -2,7 +2,6 @@ package tests
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/elliotwms/fakediscord/pkg/fakediscord"
 	"github.com/elliotwms/pinbot/internal/config"
+	"github.com/sirupsen/logrus"
 )
 
 const testGuildName = "Pinbot Integration Testing"
@@ -18,6 +18,8 @@ var (
 	session            *discordgo.Session
 	shouldCleanupGuild bool
 )
+
+var log = logrus.New()
 
 func TestMain(m *testing.M) {
 	if v := os.Getenv("FAKEDISCORD"); v != "" {

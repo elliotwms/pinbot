@@ -1,15 +1,17 @@
 package tests
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/elliotwms/bot"
 	"github.com/elliotwms/pinbot/internal/commandhandlers"
 	"github.com/elliotwms/pinbot/internal/config"
-	"github.com/elliotwms/pinbot/internal/pinbot"
+	"github.com/elliotwms/pinbot/internal/eventhandlers"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
@@ -34,8 +36,6 @@ type PinStage struct {
 }
 
 func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
-	log := logrus.New()
-
 	if os.Getenv("TEST_DEBUG") != "" {
 		log.SetLevel(logrus.DebugLevel)
 	}
@@ -49,16 +49,17 @@ func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
 		logHook: test.NewLocal(log),
 	}
 
-	done := make(chan os.Signal, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	b := bot.
+		New(config.ApplicationID, session, log).
+		WithHandlers(eventhandlers.List(logrus.NewEntry(s.log)))
 
 	go func() {
-		bot := pinbot.New(config.ApplicationID, session, log)
-		s.require.NoError(bot.Run(done))
+		s.require.NoError(b.Run(ctx))
 	}()
 
-	t.Cleanup(func() {
-		done <- os.Interrupt
-	})
+	t.Cleanup(cancel)
 
 	return s, s, s
 }

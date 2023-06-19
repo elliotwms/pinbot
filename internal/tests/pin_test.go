@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"os"
 	"testing"
 )
 
@@ -210,10 +209,6 @@ func TestPinInExcludedChannel(t *testing.T) {
 }
 
 func TestPinPersistsEmbeds(t *testing.T) {
-	if os.Getenv("FAKEDISCORD") != "" {
-		t.Skip("test incompatible with fakediscord: todo url should create server-side embed")
-	}
-
 	given, when, then := NewPinStage(t)
 
 	given.
