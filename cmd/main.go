@@ -30,7 +30,8 @@ func main() {
 
 	b := bot.
 		New(config.ApplicationID, s, log).
-		WithHandlers(eventhandlers.List(logrus.NewEntry(log)))
+		WithHandlers(eventhandlers.List(logrus.NewEntry(log))).
+		WithConfigReporter(config.Output)
 
 	if config.HealthCheckAddr != "" {
 		b.WithHealthCheck(config.HealthCheckAddr)
