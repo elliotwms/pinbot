@@ -2,7 +2,7 @@ package commandhandlers
 
 import (
 	"github.com/bwmarrin/discordgo"
-	"github.com/elliotwms/pinbot/internal/pinbot/commands"
+	"github.com/elliotwms/pinbot/internal/commands"
 	"github.com/sirupsen/logrus"
 )
 
