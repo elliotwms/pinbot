@@ -6,9 +6,6 @@ on:
 jobs:
   test:
     uses: ./.github/workflows/test.yml
-    secrets:
-      TOKEN: ${{ secrets.TOKEN }}
-      APPLICATION_ID: ${{ secrets.APPLICATION_ID }}
   release:
     name: Create Release
     runs-on: ubuntu-latest
