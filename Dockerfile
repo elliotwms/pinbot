@@ -11,7 +11,6 @@ RUN go mod download
 COPY ./ ./
 
 ARG APP_VERSION="v0.0.0+unknown"
-RUN echo ${APP_VERSION}
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-X github.com/elliotwms/pinbot/internal/build.Version=${APP_VERSION}" -o /pinbot ./cmd/main.go
 
 FROM scratch
