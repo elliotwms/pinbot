@@ -69,7 +69,7 @@ func (s *PinStage) and() *PinStage {
 }
 
 func (s *PinStage) a_channel_named(name string) *PinStage {
-	c, err := s.session.GuildChannelCreate(config.TestGuildID, name, discordgo.ChannelTypeGuildText)
+	c, err := s.session.GuildChannelCreate(testGuildID, name, discordgo.ChannelTypeGuildText)
 	s.require.NoError(err)
 
 	s.t.Cleanup(func() {
@@ -192,7 +192,7 @@ func (s *PinStage) the_message_is_pinned() *PinStage {
 
 func (s *PinStage) an_import_is_triggered() {
 	commandhandlers.ImportChannelCommandHandler(&commandhandlers.ImportChannelCommand{
-		GuildID:   config.TestGuildID,
+		GuildID:   testGuildID,
 		ChannelID: s.channel.ID,
 	}, s.session, s.log.WithField("test", true))
 }
