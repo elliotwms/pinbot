@@ -73,7 +73,6 @@ func Output(showSensitive bool) logrus.Fields {
 		"APPLICATION_ID":    ApplicationID,
 		"HEALTH_CHECK_ADDR": HealthCheckAddr,
 		"LOG_LEVEL":         LogLevel,
-		"SELF_PIN_ENABLED":  SelfPinEnabled,
 		"EXCLUDED_CHANNELS": ExcludedChannels,
 		"INTENTS":           Intents,
 		"PERMISSIONS":       Permissions,
