@@ -111,7 +111,7 @@ func buildPinMessage(sourceChannel *discordgo.Channel, c *PinMessageCommand, m *
 	url := fmt.Sprintf("https://discord.com/channels/%s/%s/%s", c.GuildID, m.ChannelID, m.ID)
 	embed := &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
-			Name:    m.Author.String(),
+			Name:    m.Author.Username,
 			IconURL: m.Author.AvatarURL(""),
 			URL:     url,
 		},
