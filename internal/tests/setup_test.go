@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/elliotwms/fakediscord/pkg/fakediscord"
@@ -15,19 +14,17 @@ import (
 const testGuildName = "Pinbot Integration Testing"
 
 var (
-	session            *discordgo.Session
-	shouldCleanupGuild bool
+	session     *discordgo.Session
+	testGuildID string
 )
 
 var log = logrus.New()
 
 func TestMain(m *testing.M) {
-	if v := os.Getenv("FAKEDISCORD"); v != "" {
-		fakediscord.Configure("http://localhost:8080/")
+	fakediscord.Configure("http://localhost:8080/")
 
-		_ = os.Setenv("TOKEN", "token")
-		_ = os.Setenv("APPLICATION_ID", "appid")
-	}
+	_ = os.Setenv("TOKEN", "token")
+	_ = os.Setenv("APPLICATION_ID", "appid")
 
 	config.Configure()
 	// enable testing with a single bot by allowing self-pins
@@ -65,39 +62,7 @@ func openSession() {
 		panic(err)
 	}
 
-	if config.TestGuildID == "" {
-		log.Println("'TEST_GUILD_ID' not provided. Deleting stale guilds and creating new guild")
-		deleteStaleGuilds()
-		createGuild()
-	} else {
-		log.Printf("Using test guild ID '%s'", config.TestGuildID)
-		log.Printf("Ensure the bot is installed in the test guild with the additional test permissions: %s", config.BuildInstallURL())
-	}
-}
-
-func deleteStaleGuilds() {
-	guilds, err := session.UserGuilds(0, "", "")
-	if err != nil {
-		panic(err)
-	}
-
-	for _, ug := range guilds {
-		if ug.Name != testGuildName {
-			continue
-		}
-
-		guild, err := session.Guild(ug.ID)
-		if err != nil {
-			panic(err)
-		}
-
-		if time.Since(guild.JoinedAt) > time.Hour {
-			log.Printf("Deleting stale guild '%s'", guild.ID)
-			if _, err := session.GuildDelete(guild.ID); err != nil {
-				return
-			}
-		}
-	}
+	createGuild()
 }
 
 func createGuild() {
@@ -106,15 +71,10 @@ func createGuild() {
 		panic(err)
 	}
 
-	config.TestGuildID = guild.ID
-	shouldCleanupGuild = true
+	testGuildID = guild.ID
 }
 
 func closeSession() {
-	if shouldCleanupGuild {
-		_, _ = session.GuildDelete(config.TestGuildID)
-	}
-
 	if err := session.Close(); err != nil {
 		panic(err)
 	}

@@ -11,10 +11,6 @@ func GuildCreate(log *logrus.Entry) func(s *discordgo.Session, e *discordgo.Guil
 	return func(s *discordgo.Session, e *discordgo.GuildCreate) {
 		log.Debug("Guild info received:", e.Name)
 
-		if !config.ShouldActOnGuild(e.Guild.ID) {
-			return
-		}
-
 		commandhandlers.RegisterCommandsCommandHandler(&commandhandlers.RegisterCommandsCommand{
 			ApplicationID: config.ApplicationID,
 			GuildID:       e.Guild.ID,

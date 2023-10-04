@@ -24,7 +24,6 @@ const DefaultPermissions = discordgo.PermissionViewChannel |
 var (
 	Token            string
 	ApplicationID    string
-	TestGuildID      string
 	HealthCheckAddr  string
 	LogLevel         logrus.Level
 	SelfPinEnabled   bool
@@ -39,7 +38,6 @@ func Configure() {
 	once.Do(func() {
 		Token = mustGetEnv("TOKEN")
 		ApplicationID = mustGetEnv("APPLICATION_ID")
-		TestGuildID = os.Getenv("TEST_GUILD_ID")
 		SelfPinEnabled = strings.ToLower(os.Getenv("SELF_PIN_ENABLED")) == "true"
 		HealthCheckAddr = os.Getenv("HEALTH_CHECK_ADDR")
 
@@ -73,7 +71,6 @@ func Configure() {
 func Output(showSensitive bool) logrus.Fields {
 	fields := logrus.Fields{
 		"APPLICATION_ID":    ApplicationID,
-		"TEST_GUILD_ID":     TestGuildID,
 		"HEALTH_CHECK_ADDR": HealthCheckAddr,
 		"LOG_LEVEL":         LogLevel,
 		"SELF_PIN_ENABLED":  SelfPinEnabled,
@@ -107,10 +104,6 @@ func IsExcludedChannel(id string) bool {
 	}
 
 	return false
-}
-
-func ShouldActOnGuild(id string) bool {
-	return TestGuildID == "" || TestGuildID == id
 }
 
 func BuildInstallURL() *url.URL {
