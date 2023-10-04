@@ -10,10 +10,6 @@ import (
 
 func InteractionCreate(log *logrus.Entry) func(s *discordgo.Session, e *discordgo.InteractionCreate) {
 	return func(s *discordgo.Session, e *discordgo.InteractionCreate) {
-		if !config.ShouldActOnGuild(e.GuildID) {
-			return
-		}
-
 		if e.Type != discordgo.InteractionApplicationCommand {
 			return
 		}

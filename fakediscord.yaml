@@ -2,7 +2,10 @@ users:
   - username: Pinbot
     discriminator: "0451"
     bot: true
-    token: token
+    token: bot
+  - username: User
+    discriminator: "0001"
+    token: user
 guilds:
   - name: Test Guild
     channels:
