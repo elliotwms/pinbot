@@ -3,8 +3,8 @@ github.com/bwmarrin/discordgo v0.27.1/go.mod h1:NJZpH+1AfhIcyQsPeuBKsUtYrRnjkyu0
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/elliotwms/bot v0.3.9 h1:mJzyO36jwcA8Cli0ViXAX3M2wTi3tWcOyOH3Iscz338=
-github.com/elliotwms/bot v0.3.9/go.mod h1:ASzCwXJq6ktoZHx1Cl55vxRnEFcTw0Zl5jJhSxsOvZ8=
+github.com/elliotwms/bot v0.3.10 h1:XtWv+s06t8iAn/0fmKBAf8GyfLFhZp8uaZHo2L0VZDs=
+github.com/elliotwms/bot v0.3.10/go.mod h1:W7XglV3uumaWMtt5IRwFDzCWozk3lQFAzCcPcBtfPiA=
 github.com/elliotwms/fakediscord v0.12.7 h1:L7VJFYBPWrH/w49qYCAnooHv9zEwIj6SHqGdt/k+9cg=
 github.com/elliotwms/fakediscord v0.12.7/go.mod h1:9gTeIl0/ZGitpvhR3/5ww34JJLlXLffqB8UijQdRnKQ=
 github.com/gorilla/websocket v1.4.2/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
