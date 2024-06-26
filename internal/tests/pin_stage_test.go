@@ -19,14 +19,15 @@ import (
 )
 
 type PinStage struct {
-	t       *testing.T
-	session *discordgo.Session
-	require *require.Assertions
-	assert  *assert.Assertions
+	t                       *testing.T
+	botSession, userSession *discordgo.Session
+	require                 *require.Assertions
+	testGuildID             string
 
-	log     *logrus.Logger
-	logHook *test.Hook
+	assert *assert.Assertions
+	log    *logrus.Logger
 
+	logHook             *test.Hook
 	sendMessage         *discordgo.MessageSend
 	channel             *discordgo.Channel
 	expectedPinsChannel *discordgo.Channel
@@ -41,18 +42,20 @@ func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
 	}
 
 	s := &PinStage{
-		t:       t,
-		log:     log,
-		session: session,
-		require: require.New(t),
-		assert:  assert.New(t),
-		logHook: test.NewLocal(log),
+		t:           t,
+		log:         log,
+		testGuildID: testGuildID,
+		botSession:  botSession,
+		userSession: userSession,
+		require:     require.New(t),
+		assert:      assert.New(t),
+		logHook:     test.NewLocal(log),
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	b := bot.
-		New(config.ApplicationID, session, log).
+		New(config.ApplicationID, botSession, log).
 		WithHandlers(eventhandlers.List(logrus.NewEntry(s.log)))
 
 	go func() {
@@ -60,6 +63,8 @@ func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
 	}()
 
 	t.Cleanup(cancel)
+
+	time.Sleep(1 * time.Second)
 
 	return s, s, s
 }
@@ -69,11 +74,11 @@ func (s *PinStage) and() *PinStage {
 }
 
 func (s *PinStage) a_channel_named(name string) *PinStage {
-	c, err := s.session.GuildChannelCreate(testGuildID, name, discordgo.ChannelTypeGuildText)
+	c, err := s.botSession.GuildChannelCreate(testGuildID, name, discordgo.ChannelTypeGuildText)
 	s.require.NoError(err)
 
 	s.t.Cleanup(func() {
-		_, err = s.session.ChannelDelete(c.ID)
+		_, err = s.botSession.ChannelDelete(c.ID)
 		s.assert.NoError(err)
 	})
 
@@ -84,7 +89,7 @@ func (s *PinStage) a_channel_named(name string) *PinStage {
 	// register the last created channel as the expected pins channel
 	s.expectedPinsChannel = c
 
-	s.session.AddHandler(s.handleMessageFor(c.ID))
+	s.botSession.AddHandler(s.handleMessageFor(c.ID))
 
 	return s
 }
@@ -97,20 +102,20 @@ func (s *PinStage) a_message() *PinStage {
 	return s
 }
 
-func (s *PinStage) the_message_is_posted() *PinStage {
+func (s *PinStage) the_user_posts_a_message() *PinStage {
 	if s.sendMessage == nil {
 		s.a_message()
 	}
 
-	m, err := s.session.ChannelMessageSendComplex(s.channel.ID, s.sendMessage)
+	m, err := s.userSession.ChannelMessageSendComplex(s.channel.ID, s.sendMessage)
 	s.require.NoError(err)
 	s.message = m
 
 	return s
 }
 
-func (s *PinStage) the_message_is_reacted_to_with(emoji string) *PinStage {
-	err := s.session.MessageReactionAdd(s.message.ChannelID, s.message.ID, emoji)
+func (s *PinStage) the_user_reacts_to_the_message_with(emoji string) *PinStage {
+	err := s.userSession.MessageReactionAdd(s.message.ChannelID, s.message.ID, emoji)
 	s.require.NoError(err)
 
 	return s
@@ -139,13 +144,13 @@ func (s *PinStage) a_pin_message_should_be_posted_in_the_last_channel() *PinStag
 
 func (s *PinStage) the_bot_should_add_the_emoji(emoji string) *PinStage {
 	s.require.Eventually(func() bool {
-		reactions, err := s.session.MessageReactions(s.channel.ID, s.message.ID, emoji, 0, "", "")
+		reactions, err := s.botSession.MessageReactions(s.channel.ID, s.message.ID, emoji, 0, "", "")
 		if err != nil {
 			return false
 		}
 
 		for _, r := range reactions {
-			if r.ID == s.session.State.User.ID {
+			if r.ID == s.botSession.State.User.ID {
 				return true
 			}
 		}
@@ -165,27 +170,15 @@ func (s *PinStage) handleMessageFor(channelID string) func(*discordgo.Session, *
 }
 
 func (s *PinStage) the_message_is_already_marked_as_pinned() {
-	s.require.NoError(s.session.MessageReactionAdd(s.message.ChannelID, s.message.ID, "👀"))
-	s.require.NoError(s.session.MessageReactionAdd(s.message.ChannelID, s.message.ID, "✅"))
+	s.require.NoError(s.botSession.MessageReactionAdd(s.message.ChannelID, s.message.ID, "📌"))
 }
 
 func (s *PinStage) the_bot_should_log_the_message_as_already_pinned() *PinStage {
 	return s.the_bot_should_log("Message already pinned")
 }
 
-func (s *PinStage) self_pin_is_disabled() *PinStage {
-	c := config.SelfPinEnabled
-	config.SelfPinEnabled = false
-
-	s.t.Cleanup(func() {
-		config.SelfPinEnabled = c
-	})
-
-	return s
-}
-
-func (s *PinStage) the_message_is_pinned() *PinStage {
-	s.require.NoError(s.session.ChannelMessagePin(s.channel.ID, s.message.ID))
+func (s *PinStage) the_user_pins_the_message() *PinStage {
+	s.require.NoError(s.userSession.ChannelMessagePin(s.channel.ID, s.message.ID))
 
 	return s
 }
@@ -194,7 +187,7 @@ func (s *PinStage) an_import_is_triggered() {
 	commandhandlers.ImportChannelCommandHandler(&commandhandlers.ImportChannelCommand{
 		GuildID:   testGuildID,
 		ChannelID: s.channel.ID,
-	}, s.session, s.log.WithField("test", true))
+	}, s.botSession, s.log.WithField("test", true))
 }
 
 func (s *PinStage) an_attachment(filename, contentType string) *PinStage {
@@ -245,10 +238,10 @@ func (s *PinStage) the_pin_message_should_have_n_embeds(n int) *PinStage {
 func (s *PinStage) the_import_is_cleaned_up() *PinStage {
 	s.a_pin_message_should_be_posted_in_the_last_channel()
 
-	s.require.NoError(s.session.ChannelMessageDelete(s.pinMessage.ChannelID, s.pinMessage.ID))
+	s.require.NoError(s.botSession.ChannelMessageDelete(s.pinMessage.ChannelID, s.pinMessage.ID))
 	s.messages = []*discordgo.Message{}
 
-	s.require.NoError(s.session.MessageReactionsRemoveAll(s.message.ChannelID, s.message.ID))
+	s.require.NoError(s.botSession.MessageReactionsRemoveAll(s.message.ChannelID, s.message.ID))
 
 	return s
 }
@@ -273,9 +266,7 @@ func (s *PinStage) the_bot_should_log(log string) *PinStage {
 }
 
 func (s *PinStage) the_bot_should_react_with_successful_emoji() *PinStage {
-	return s.
-		the_bot_should_add_the_emoji("👀").and().
-		the_bot_should_add_the_emoji("✅")
+	return s.the_bot_should_add_the_emoji("📌")
 }
 
 func (s *PinStage) the_message_has_a_link() *PinStage {
@@ -286,7 +277,7 @@ func (s *PinStage) the_message_has_a_link() *PinStage {
 
 func (s *PinStage) the_message_has_n_embeds(n int) {
 	s.require.Eventually(func() bool {
-		m, err := s.session.ChannelMessage(s.channel.ID, s.message.ID)
+		m, err := s.botSession.ChannelMessage(s.channel.ID, s.message.ID)
 		if err != nil {
 			return false
 		}
@@ -297,7 +288,7 @@ func (s *PinStage) the_message_has_n_embeds(n int) {
 
 func (s *PinStage) the_message_has_n_attachments(n int) {
 	s.require.Eventually(func() bool {
-		m, err := s.session.ChannelMessage(s.channel.ID, s.message.ID)
+		m, err := s.botSession.ChannelMessage(s.channel.ID, s.message.ID)
 		if err != nil {
 			return false
 		}

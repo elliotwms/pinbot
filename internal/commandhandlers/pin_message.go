@@ -10,11 +10,10 @@ import (
 )
 
 const (
-	emojiSeen    = "👀"
-	emojiDone    = "✅"
-	emojiErr     = "💩"
-	emojiSelfPin = "🔄"
-	emojiNo      = "🚫"
+	emojiPin  = "📌"
+	emojiDone = "✅"
+	emojiErr  = "💩"
+	emojiNo   = "🚫"
 )
 
 const pinMessageColor = 0xbb0303
@@ -33,15 +32,10 @@ func PinMessageCommandHandler(c *PinMessageCommand, s *discordgo.Session, log *l
 		"message_id": m.ID,
 	})
 
-	l.Info("Pinning message")
+	l.Info("Received pin")
 
-	// acknowledge the message
-	l.Debug("Acknowledging message")
-	react(s, m, emojiSeen, l)
-
-	if !config.SelfPinEnabled && m.Author.ID == s.State.User.ID {
-		l.Debug("Ignoring self pin")
-		react(s, m, emojiSelfPin, l)
+	if m.Author.ID == s.State.User.ID {
+		l.Debug("Received self pin")
 		return
 	}
 
@@ -51,10 +45,22 @@ func PinMessageCommandHandler(c *PinMessageCommand, s *discordgo.Session, log *l
 		return
 	}
 
-	pinned, err := isAlreadyPinned(s, m)
+	pinned, err := hasBotReacted(s, m, emojiPin)
 	if err != nil {
 		l.WithError(err).Error("Could not determine if message already pinned")
 	}
+
+	legacyPinned, err := hasBotReacted(s, m, emojiDone)
+	if err != nil {
+		l.WithError(err).Error("Could not determine if message already pinned")
+	}
+
+	if legacyPinned {
+		l.Debug("Migrating legacy pin")
+		react(s, m, emojiPin, l)
+		return
+	}
+
 	if pinned {
 		l.Info("Message already pinned")
 		return
@@ -90,7 +96,7 @@ func PinMessageCommandHandler(c *PinMessageCommand, s *discordgo.Session, log *l
 
 	// mark the message as done
 	l.Debug("Marking message as done")
-	react(s, m, emojiDone, l)
+	react(s, m, emojiPin, l)
 }
 
 func react(s *discordgo.Session, m *discordgo.Message, emoji string, l *logrus.Entry) {
@@ -163,8 +169,8 @@ func buildPinMessage(sourceChannel *discordgo.Channel, c *PinMessageCommand, m *
 	return pinMessage
 }
 
-func isAlreadyPinned(s *discordgo.Session, m *discordgo.Message) (bool, error) {
-	acks, err := s.MessageReactions(m.ChannelID, m.ID, emojiDone, 0, "", "")
+func hasBotReacted(s *discordgo.Session, m *discordgo.Message, emoji string) (bool, error) {
+	acks, err := s.MessageReactions(m.ChannelID, m.ID, emoji, 0, "", "")
 	if err != nil {
 		return false, err
 	}

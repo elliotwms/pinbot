@@ -11,12 +11,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const testGuildName = "Pinbot Integration Testing"
+var botSession, userSession *discordgo.Session
 
-var (
-	session     *discordgo.Session
-	testGuildID string
-)
+var testGuildID string
 
 var log = logrus.New()
 
@@ -27,55 +24,52 @@ func TestMain(m *testing.M) {
 	_ = os.Setenv("APPLICATION_ID", "appid")
 
 	config.Configure()
-	// enable testing with a single bot by allowing self-pins
-	config.SelfPinEnabled = true
 
-	// add additional testing permissions
-	config.Permissions = config.DefaultPermissions |
-		discordgo.PermissionManageChannels |
-		discordgo.PermissionManageMessages
+	botSession, userSession = openSession("bot"), openSession("user")
 
-	openSession()
+	must(createGuild())
 
 	code := m.Run()
 
-	closeSession()
+	must(closeSession(botSession), closeSession(userSession))
 
 	os.Exit(code)
 }
 
-func openSession() {
-	var err error
-	session, err = discordgo.New(fmt.Sprintf("Bot %s", config.Token))
-	if err != nil {
-		panic(err)
-	}
+func openSession(token string) *discordgo.Session {
+	s, err := discordgo.New(fmt.Sprintf("Bot %s", token))
+	must(err)
 
 	if os.Getenv("TEST_DEBUG") != "" {
-		session.LogLevel = discordgo.LogDebug
-		session.Debug = true
+		s.LogLevel = discordgo.LogDebug
+		s.Debug = true
 	}
 
-	session.Identify.Intents = config.Intents
+	s.Identify.Intents = config.Intents
 
-	if err := session.Open(); err != nil {
-		panic(err)
-	}
+	must(s.Open())
 
-	createGuild()
+	return s
 }
 
-func createGuild() {
-	guild, err := session.GuildCreate(testGuildName)
+func closeSession(s *discordgo.Session) error {
+	return s.Close()
+}
+
+func createGuild() error {
+	guild, err := botSession.GuildCreate("Test")
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	testGuildID = guild.ID
+	return nil
 }
 
-func closeSession() {
-	if err := session.Close(); err != nil {
-		panic(err)
+func must(errs ...error) {
+	for _, err := range errs {
+		if err != nil {
+			panic(err)
+		}
 	}
 }

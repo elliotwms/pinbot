@@ -28,7 +28,7 @@ func NewHealthStage(t *testing.T) (*HealthStage, *HealthStage, *HealthStage) {
 
 	s := &HealthStage{
 		t:       t,
-		session: session,
+		session: botSession,
 		require: require.New(t),
 		port:    strconv.Itoa(p),
 	}
@@ -36,7 +36,7 @@ func NewHealthStage(t *testing.T) (*HealthStage, *HealthStage, *HealthStage) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
-		b := bot.New(config.ApplicationID, session, log)
+		b := bot.New(config.ApplicationID, botSession, log)
 		s.require.NoError(b.WithHealthCheck(":" + s.port).Run(ctx))
 	}()
 
