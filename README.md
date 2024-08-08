@@ -105,4 +105,4 @@ the following:
     * Manage Channels (to create channels during tests)
     * Read Messages (to assert on message creation)
     * Manage messages (to pin messages)
-* Set the `TEST_GUILD_ID` environment variable to the test guild's ID when running the tests [as above](#testing)
+* set the `TEST_GUILD_ID` environment variable to the test guild's ID when running the tests [as above](#testing)
