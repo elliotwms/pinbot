@@ -11,6 +11,5 @@ func List(l *logrus.Entry) []interface{} {
 		MessageReactionAdd(l.WithField(logFieldHandler, "MessageReactionAdd")),
 		GuildCreate(l.WithField(logFieldHandler, "GuildCreate")),
 		InteractionCreate(l.WithField(logFieldHandler, "InteractionCreate")),
-		ChannelPinsUpdate(l.WithField(logFieldHandler, "ChannelPinsUpdate")),
 	}
 }

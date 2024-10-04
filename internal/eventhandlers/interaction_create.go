@@ -3,52 +3,43 @@ package eventhandlers
 import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/elliotwms/pinbot/internal/commandhandlers"
-	"github.com/elliotwms/pinbot/internal/commands"
-	"github.com/elliotwms/pinbot/internal/config"
 	"github.com/sirupsen/logrus"
 )
 
 func InteractionCreate(log *logrus.Entry) func(s *discordgo.Session, e *discordgo.InteractionCreate) {
-	return func(s *discordgo.Session, e *discordgo.InteractionCreate) {
-		if e.Type != discordgo.InteractionApplicationCommand {
+	return func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		if i.Type != discordgo.InteractionApplicationCommand {
 			return
 		}
 
-		command := e.ApplicationCommandData()
-		switch command.Name {
-		case commands.Import.Name:
-			channelID := e.ChannelID
-			for _, option := range command.Options {
-				if option.Name == commands.OptionChannel {
-					if c, ok := option.Value.(string); ok {
-						channelID = c
-					}
-				}
-			}
+		data := i.ApplicationCommandData()
 
-			if config.IsExcludedChannel(channelID) {
-				_ = s.InteractionRespond(e.Interaction, &discordgo.InteractionResponse{
-					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionResponseData{
-						Content: "This channel is excluded from pinbot",
-						Flags:   1 << 6,
-					},
-				})
-				return
-			}
+		l := log.WithFields(map[string]interface{}{
+			"guild_id":       i.GuildID,
+			"channel_id":     i.ChannelID,
+			"interaction_id": i.ID,
+			"message_id":     data.TargetID,
+			"interaction":    data.Name,
+		})
 
-			_ = s.InteractionRespond(e.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Starting import",
-					Flags:   1 << 6,
-				},
-			})
+		h, ok := commandhandlers.Handlers[data.Name]
 
-			commandhandlers.ImportChannelCommandHandler(&commandhandlers.ImportChannelCommand{
-				GuildID:   e.GuildID,
-				ChannelID: channelID,
-			}, s, log)
+		if !ok {
+			l.Warn("Unexpected interaction")
+			return
 		}
+
+		res, err := h(s, i, data, l)
+
+		if err != nil {
+			l.WithError(err).Error("Error handling interaction")
+		}
+
+		_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: res,
+			},
+		})
 	}
 }

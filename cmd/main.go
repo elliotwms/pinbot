@@ -26,6 +26,7 @@ func main() {
 
 	if log.IsLevelEnabled(logrus.TraceLevel) {
 		s.LogLevel = discordgo.LogDebug
+		s.Debug = true
 	}
 
 	b := bot.

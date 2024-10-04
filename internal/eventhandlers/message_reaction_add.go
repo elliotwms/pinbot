@@ -2,7 +2,6 @@ package eventhandlers
 
 import (
 	"github.com/bwmarrin/discordgo"
-	"github.com/elliotwms/pinbot/internal/commandhandlers"
 	"github.com/sirupsen/logrus"
 )
 
@@ -15,16 +14,6 @@ func MessageReactionAdd(log *logrus.Entry) func(s *discordgo.Session, e *discord
 			return
 		}
 
-		m, err := s.ChannelMessage(e.ChannelID, e.MessageID)
-		if err != nil {
-			log.WithError(err).Error("Could not get channel message")
-			return
-		}
-
-		commandhandlers.PinMessageCommandHandler(&commandhandlers.PinMessageCommand{
-			GuildID:  e.GuildID,
-			Message:  m,
-			PinnedBy: e.Member.User,
-		}, s, log)
+		// todo notify channel of new pin behaviour?
 	}
 }

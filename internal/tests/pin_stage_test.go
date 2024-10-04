@@ -9,7 +9,6 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/elliotwms/bot"
-	"github.com/elliotwms/pinbot/internal/commandhandlers"
 	"github.com/elliotwms/pinbot/internal/config"
 	"github.com/elliotwms/pinbot/internal/eventhandlers"
 	"github.com/sirupsen/logrus"
@@ -182,19 +181,6 @@ func (s *PinStage) self_pin_is_disabled() *PinStage {
 	})
 
 	return s
-}
-
-func (s *PinStage) the_message_is_pinned() *PinStage {
-	s.require.NoError(s.session.ChannelMessagePin(s.channel.ID, s.message.ID))
-
-	return s
-}
-
-func (s *PinStage) an_import_is_triggered() {
-	commandhandlers.ImportChannelCommandHandler(&commandhandlers.ImportChannelCommand{
-		GuildID:   testGuildID,
-		ChannelID: s.channel.ID,
-	}, s.session, s.log.WithField("test", true))
 }
 
 func (s *PinStage) an_attachment(filename, contentType string) *PinStage {
