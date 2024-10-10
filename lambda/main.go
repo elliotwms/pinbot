@@ -18,6 +18,7 @@ func main() {
 
 	h := router.
 		New(s).
+		WithPublicKey([]byte(os.Getenv("DISCORD_PUBLIC_KEY"))).
 		WithApplicationCommand(commands.Pin.Name, commandhandlers.PinMessageCommandHandler)
 
 	lambda.Start(h.Handle)

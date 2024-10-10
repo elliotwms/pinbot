@@ -2,16 +2,19 @@ package router
 
 import (
 	"context"
+	"crypto/ed25519"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/bwmarrin/discordgo"
 )
 
 type Router struct {
-	s        *discordgo.Session
-	handlers map[string]CommandHandler
+	s         *discordgo.Session
+	handlers  map[string]CommandHandler
+	publicKey ed25519.PublicKey
 }
 
 type CommandHandler func(s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) (string, error)
@@ -21,6 +24,12 @@ func New(s *discordgo.Session) *Router {
 		s:        s,
 		handlers: map[string]CommandHandler{},
 	}
+}
+
+func (r *Router) WithPublicKey(key ed25519.PublicKey) *Router {
+	r.publicKey = key
+
+	return r
 }
 
 func (r *Router) WithApplicationCommand(name string, handler CommandHandler) *Router {
@@ -33,10 +42,16 @@ func (r *Router) Handle(_ context.Context, event *events.APIGatewayProxyRequest)
 		return nil, fmt.Errorf("received nil event")
 	}
 
-	// todo validate headers
+	bs := []byte(event.Body)
+
+	if !r.verify(event) {
+		return &events.APIGatewayProxyResponse{
+			StatusCode: http.StatusUnauthorized,
+		}, nil
+	}
 
 	var i *discordgo.InteractionCreate
-	if err := json.Unmarshal([]byte(event.Body), &i); err != nil {
+	if err := json.Unmarshal(bs, &i); err != nil {
 		return nil, err
 	}
 
@@ -45,7 +60,7 @@ func (r *Router) Handle(_ context.Context, event *events.APIGatewayProxyRequest)
 		return nil, err
 	}
 
-	bs, err := json.Marshal(response)
+	bs, err = json.Marshal(response)
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +69,24 @@ func (r *Router) Handle(_ context.Context, event *events.APIGatewayProxyRequest)
 		StatusCode: 200,
 		Body:       string(bs),
 	}, nil
+}
+
+func (r *Router) verify(event *events.APIGatewayProxyRequest) bool {
+	if len(r.publicKey) == 0 {
+		return true
+	}
+
+	sig, ok := event.Headers["X-Signature-Ed25519"]
+	if !ok {
+		return false
+	}
+	ts, ok := event.Headers["X-Signature-Timestamp"]
+	if !ok {
+		return false
+	}
+	verify := append([]byte(ts), []byte(event.Body)...)
+
+	return ed25519.Verify(r.publicKey, verify, []byte(sig))
 }
 
 func (r *Router) handleInteraction(i *discordgo.InteractionCreate) (*discordgo.InteractionResponse, error) {
