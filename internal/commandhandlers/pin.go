@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/elliotwms/pinbot/internal/config"
 	"github.com/sirupsen/logrus"
 )
 
@@ -15,19 +14,17 @@ const (
 
 const pinMessageColor = 0xbb0303
 
-func pinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData, log *logrus.Entry) (userFeedback string, err error) {
+func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) (userFeedback string, err error) {
 	m := data.Resolved.Messages[data.TargetID]
 	m.GuildID = i.GuildID // guildID is missing from message in resolved context
 
+	log := logrus.WithFields(logrus.Fields{
+		"guild_id":   i.GuildID,
+		"channel_id": i.ChannelID,
+		"message_id": m.ID,
+	})
+
 	log.Debug("Pinning message")
-
-	if !config.SelfPinEnabled && m.Author.ID == s.State.User.ID {
-		return "Could not pin bot message", nil
-	}
-
-	if config.IsExcludedChannel(m.ChannelID) {
-		return "Channel excluded", nil
-	}
 
 	pinned, err := isAlreadyPinned(s, m)
 	if err != nil {
@@ -38,7 +35,7 @@ func pinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCrea
 		return "🔄 Message already pinned", nil
 	}
 
-	sourceChannel, err := s.State.Channel(m.ChannelID)
+	sourceChannel, err := s.Channel(m.ChannelID)
 	if err != nil {
 		return "💩 Temporary error, please retry", fmt.Errorf("determine source channel: %w", err)
 	}
@@ -167,7 +164,7 @@ func isAlreadyPinned(s *discordgo.Session, m *discordgo.Message) (bool, error) {
 // #pins (a generic pin channel)
 // #channel (the channel itself)
 func getTargetChannel(s *discordgo.Session, guildID string, origin *discordgo.Channel) (*discordgo.Channel, error) {
-	guild, err := s.State.Guild(guildID)
+	channels, err := s.GuildChannels(guildID)
 	if err != nil {
 		return nil, err
 	}
@@ -175,15 +172,16 @@ func getTargetChannel(s *discordgo.Session, guildID string, origin *discordgo.Ch
 	// use the same channel by default
 	channel := origin
 
-	// check for #channel-pins
-	for _, c := range guild.Channels {
-		if c.Name == channel.Name+"-pins" {
+	// check for #channel-pins first
+	for _, c := range channels {
+		if c.Name == channel.Name+"-pins" && c.Type == discordgo.ChannelTypeGuildText {
 			return c, nil
 		}
 	}
 
-	for _, c := range guild.Channels {
-		if c.Name == "pins" {
+	// fallback to general pins channel
+	for _, c := range channels {
+		if c.Name == "pins" && c.Type == discordgo.ChannelTypeGuildText {
 			return c, nil
 		}
 	}

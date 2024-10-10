@@ -12,11 +12,11 @@ func TestPin(t *testing.T) {
 		the_message_is_posted()
 
 	when.
-		the_message_is_reacted_to_with("📌")
+		the_pin_command_is_sent_for_the_message()
 
 	then.
 		a_pin_message_should_be_posted_in_the_last_channel().and().
-		the_bot_should_react_with_successful_emoji()
+		the_bot_should_successfully_acknowledge_the_pin()
 }
 
 func TestPinGeneralPinsChannel(t *testing.T) {
@@ -28,11 +28,11 @@ func TestPinGeneralPinsChannel(t *testing.T) {
 		the_message_is_posted()
 
 	when.
-		the_message_is_reacted_to_with("📌")
+		the_pin_command_is_sent_for_the_message()
 
 	then.
 		a_pin_message_should_be_posted_in_the_last_channel().
-		the_bot_should_react_with_successful_emoji()
+		the_bot_should_successfully_acknowledge_the_pin()
 }
 
 func TestPinSpecificPinsChannel(t *testing.T) {
@@ -45,11 +45,11 @@ func TestPinSpecificPinsChannel(t *testing.T) {
 		the_message_is_posted()
 
 	when.
-		the_message_is_reacted_to_with("📌")
+		the_pin_command_is_sent_for_the_message()
 
 	then.
 		a_pin_message_should_be_posted_in_the_last_channel().and().
-		the_bot_should_react_with_successful_emoji()
+		the_bot_should_successfully_acknowledge_the_pin()
 }
 
 func TestPinAlreadyPinned(t *testing.T) {
@@ -61,27 +61,10 @@ func TestPinAlreadyPinned(t *testing.T) {
 		the_message_is_already_marked_as_pinned()
 
 	when.
-		the_message_is_reacted_to_with("📌")
+		the_pin_command_is_sent_for_the_message()
 
 	then.
-		the_bot_should_log_the_message_as_already_pinned()
-}
-
-// TestPinSelfPinDisabled tests the 'correct' behaviour of Pinbot when pinning its own messages.
-// Self-pin is enabled to allow testing via a single bot in a single server
-func TestPinSelfPinDisabled(t *testing.T) {
-	given, when, then := NewPinStage(t)
-
-	given.
-		a_channel_named("test").and().
-		self_pin_is_disabled().and().
-		the_message_is_posted()
-
-	when.
-		the_message_is_reacted_to_with("📌")
-
-	then.
-		the_bot_should_add_the_emoji("🔄")
+		the_bot_should_respond_with_message_containing("🔄 Message already pinned")
 }
 
 func TestPinWithImage(t *testing.T) {
@@ -95,11 +78,11 @@ func TestPinWithImage(t *testing.T) {
 		the_message_has_n_attachments(1)
 
 	when.
-		the_message_is_reacted_to_with("📌")
+		the_pin_command_is_sent_for_the_message()
 
 	then.
 		a_pin_message_should_be_posted_in_the_last_channel().and().
-		the_bot_should_react_with_successful_emoji().and().
+		the_bot_should_successfully_acknowledge_the_pin().and().
 		the_pin_message_should_have_n_embeds(1).and().
 		the_pin_message_should_have_an_image_embed()
 }
@@ -115,11 +98,11 @@ func TestPinWithMultipleImage(t *testing.T) {
 		the_message_is_posted()
 
 	when.
-		the_message_is_reacted_to_with("📌")
+		the_pin_command_is_sent_for_the_message()
 
 	then.
 		a_pin_message_should_be_posted_in_the_last_channel().and().
-		the_bot_should_react_with_successful_emoji().and().
+		the_bot_should_successfully_acknowledge_the_pin().and().
 		the_pin_message_should_have_n_embeds(2).and().
 		the_pin_message_should_have_n_embeds_with_image_url(2)
 }
@@ -134,29 +117,13 @@ func TestPinWithFile(t *testing.T) {
 		the_message_is_posted()
 
 	when.
-		the_message_is_reacted_to_with("📌")
+		the_pin_command_is_sent_for_the_message()
 
 	then.
 		a_pin_message_should_be_posted_in_the_last_channel().and().
-		the_bot_should_react_with_successful_emoji().and().
+		the_bot_should_successfully_acknowledge_the_pin().and().
 		the_pin_message_should_have_n_embeds(1).and().
 		the_pin_message_should_have_n_embeds_with_image_url(0)
-}
-
-func TestPinInExcludedChannel(t *testing.T) {
-	given, when, then := NewPinStage(t)
-
-	given.
-		a_channel_named("test").and().
-		the_channel_is_excluded().and().
-		the_message_is_posted()
-
-	when.
-		the_message_is_reacted_to_with("📌")
-
-	then.
-		the_bot_should_add_the_emoji("👀").and().
-		the_bot_should_add_the_emoji("🚫")
 }
 
 func TestPinPersistsEmbeds(t *testing.T) {
@@ -170,10 +137,10 @@ func TestPinPersistsEmbeds(t *testing.T) {
 		the_message_has_n_embeds(1) // account for delay in link embed arriving (via MESSAGE_UPDATE)
 
 	when.
-		the_message_is_reacted_to_with("📌")
+		the_pin_command_is_sent_for_the_message()
 
 	then.
-		the_bot_should_react_with_successful_emoji().and().
+		the_bot_should_successfully_acknowledge_the_pin().and().
 		a_pin_message_should_be_posted_in_the_last_channel().and().
 		the_pin_message_should_have_n_embeds(2) // the pin embed + link
 }
