@@ -7,7 +7,6 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/elliotwms/fakediscord/pkg/fakediscord"
-	"github.com/elliotwms/pinbot/internal/config"
 	"github.com/sirupsen/logrus"
 )
 
@@ -23,17 +22,7 @@ var log = logrus.New()
 func TestMain(m *testing.M) {
 	fakediscord.Configure("http://localhost:8080/")
 
-	_ = os.Setenv("TOKEN", "token")
-	_ = os.Setenv("APPLICATION_ID", "appid")
-
-	config.Configure()
-	// enable testing with a single bot by allowing self-pins
-	config.SelfPinEnabled = true
-
-	// add additional testing permissions
-	config.Permissions = config.DefaultPermissions |
-		discordgo.PermissionManageChannels |
-		discordgo.PermissionManageMessages
+	log.SetLevel(logrus.DebugLevel)
 
 	openSession()
 
@@ -46,7 +35,7 @@ func TestMain(m *testing.M) {
 
 func openSession() {
 	var err error
-	session, err = discordgo.New(fmt.Sprintf("Bot %s", config.Token))
+	session, err = discordgo.New(fmt.Sprintf("Bot token"))
 	if err != nil {
 		panic(err)
 	}
@@ -56,8 +45,11 @@ func openSession() {
 		session.Debug = true
 	}
 
-	session.Identify.Intents = config.Intents
+	session.Identify.Intents = discordgo.IntentsGuilds |
+		discordgo.IntentsGuildMessages |
+		discordgo.IntentsGuildMessageReactions
 
+	// session is used for asserting on events from fakediscord
 	if err := session.Open(); err != nil {
 		panic(err)
 	}

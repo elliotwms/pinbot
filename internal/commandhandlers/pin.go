@@ -5,92 +5,64 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/elliotwms/pinbot/internal/config"
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	emojiSeen    = "👀"
-	emojiDone    = "✅"
-	emojiErr     = "💩"
-	emojiSelfPin = "🔄"
-	emojiNo      = "🚫"
+	emojiPinned = "📌"
 )
 
 const pinMessageColor = 0xbb0303
 
-type PinMessageCommand struct {
-	GuildID  string
-	Message  *discordgo.Message
-	PinnedBy *discordgo.User
-}
+func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) (userFeedback string, err error) {
+	m := data.Resolved.Messages[data.TargetID]
+	m.GuildID = i.GuildID // guildID is missing from message in resolved context
 
-func PinMessageCommandHandler(c *PinMessageCommand, s *discordgo.Session, log *logrus.Entry) {
-	m := c.Message
-	l := log.WithFields(map[string]interface{}{
-		"guild_id":   c.GuildID,
-		"channel_id": m.ChannelID,
+	log := logrus.WithFields(logrus.Fields{
+		"guild_id":   i.GuildID,
+		"channel_id": i.ChannelID,
 		"message_id": m.ID,
 	})
 
-	l.Info("Pinning message")
-
-	// acknowledge the message
-	l.Debug("Acknowledging message")
-	react(s, m, emojiSeen, l)
-
-	if !config.SelfPinEnabled && m.Author.ID == s.State.User.ID {
-		l.Debug("Ignoring self pin")
-		react(s, m, emojiSelfPin, l)
-		return
-	}
-
-	if config.IsExcludedChannel(m.ChannelID) {
-		l.Debug("Skipping excluded channel")
-		react(s, m, emojiNo, l)
-		return
-	}
+	log.Debug("Pinning message")
 
 	pinned, err := isAlreadyPinned(s, m)
 	if err != nil {
-		l.WithError(err).Error("Could not determine if message already pinned")
+		// proceed but assume the message is not already pinned
+		log.WithError(err).Error("Could not check if message is already pinned. Assuming unpinned...")
 	}
 	if pinned {
-		l.Info("Message already pinned")
-		return
+		return "🔄 Message already pinned", nil
 	}
 
-	sourceChannel, err := s.State.Channel(m.ChannelID)
+	sourceChannel, err := s.Channel(m.ChannelID)
 	if err != nil {
-		l.WithError(err).Error("Source channel missing from state")
-		react(s, m, emojiErr, l)
-		return
+		return "💩 Temporary error, please retry", fmt.Errorf("determine source channel: %w", err)
 	}
 
 	// determine the target pin channel for the message
-	targetChannel, err := getTargetChannel(s, c.GuildID, sourceChannel)
+	targetChannel, err := getTargetChannel(s, i.GuildID, sourceChannel)
 	if err != nil {
-		l.WithError(err).Error("Could not get target channel")
-		react(s, m, emojiErr, l)
-		return
+		return "💩 Temporary error, please retry", fmt.Errorf("determine target channel: %w", err)
 	}
 
-	l = l.WithField("target_channel_id", targetChannel.ID)
+	l := log.WithField("target_channel_id", targetChannel.ID)
 
 	// build the rich embed pin message
-	pinMessage := buildPinMessage(sourceChannel, c, m)
+	pinMessage := buildPinMessage(sourceChannel, m, i.Member.User)
 
 	// send the pin message
-	_, err = s.ChannelMessageSendComplex(targetChannel.ID, pinMessage)
+	pin, err := s.ChannelMessageSendComplex(targetChannel.ID, pinMessage)
 	if err != nil {
-		l.WithError(err).Error("Could not send message")
-		react(s, m, emojiErr, l)
-		return
+		return "🙅 Could not send pin message. Please check bot permissions", fmt.Errorf("send pin message: %w", err)
 	}
 
 	// mark the message as done
-	l.Debug("Marking message as done")
-	react(s, m, emojiDone, l)
+	react(s, m, emojiPinned, l)
+
+	l.Info("Pinned message")
+
+	return "📌 Pinned: " + url(i.GuildID, pin.ChannelID, pin.ID), nil
 }
 
 func react(s *discordgo.Session, m *discordgo.Message, emoji string, l *logrus.Entry) {
@@ -99,7 +71,16 @@ func react(s *discordgo.Session, m *discordgo.Message, emoji string, l *logrus.E
 	}
 }
 
-func buildPinMessage(sourceChannel *discordgo.Channel, c *PinMessageCommand, m *discordgo.Message) *discordgo.MessageSend {
+func url(guildID, channelID, messageID string) string {
+	return fmt.Sprintf(
+		"https://discord.com/channels/%s/%s/%s",
+		guildID,
+		channelID,
+		messageID,
+	)
+}
+
+func buildPinMessage(sourceChannel *discordgo.Channel, m *discordgo.Message, pinnedBy *discordgo.User) *discordgo.MessageSend {
 	fields := []*discordgo.MessageEmbedField{
 		{
 			Name:   "Channel",
@@ -108,24 +89,24 @@ func buildPinMessage(sourceChannel *discordgo.Channel, c *PinMessageCommand, m *
 		},
 	}
 
-	url := fmt.Sprintf("https://discord.com/channels/%s/%s/%s", c.GuildID, m.ChannelID, m.ID)
+	u := url(sourceChannel.GuildID, m.ChannelID, m.ID)
 	embed := &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
 			Name:    m.Author.Username,
 			IconURL: m.Author.AvatarURL(""),
-			URL:     url,
+			URL:     u,
 		},
 		Title:       "📌 Pinned",
 		Color:       pinMessageColor,
 		Description: m.Content,
-		URL:         url,
+		URL:         u,
 		Timestamp:   m.Timestamp.Format(time.RFC3339),
 	}
 
-	if c.PinnedBy != nil {
+	if pinnedBy != nil {
 		fields = append(fields, &discordgo.MessageEmbedField{
 			Name:   "Pinned by",
-			Value:  c.PinnedBy.Mention(),
+			Value:  pinnedBy.Mention(),
 			Inline: true,
 		})
 	}
@@ -164,7 +145,7 @@ func buildPinMessage(sourceChannel *discordgo.Channel, c *PinMessageCommand, m *
 }
 
 func isAlreadyPinned(s *discordgo.Session, m *discordgo.Message) (bool, error) {
-	acks, err := s.MessageReactions(m.ChannelID, m.ID, emojiDone, 0, "", "")
+	acks, err := s.MessageReactions(m.ChannelID, m.ID, emojiPinned, 0, "", "")
 	if err != nil {
 		return false, err
 	}
@@ -183,7 +164,7 @@ func isAlreadyPinned(s *discordgo.Session, m *discordgo.Message) (bool, error) {
 // #pins (a generic pin channel)
 // #channel (the channel itself)
 func getTargetChannel(s *discordgo.Session, guildID string, origin *discordgo.Channel) (*discordgo.Channel, error) {
-	guild, err := s.State.Guild(guildID)
+	channels, err := s.GuildChannels(guildID)
 	if err != nil {
 		return nil, err
 	}
@@ -191,15 +172,16 @@ func getTargetChannel(s *discordgo.Session, guildID string, origin *discordgo.Ch
 	// use the same channel by default
 	channel := origin
 
-	// check for #channel-pins
-	for _, c := range guild.Channels {
-		if c.Name == channel.Name+"-pins" {
+	// check for #channel-pins first
+	for _, c := range channels {
+		if c.Name == channel.Name+"-pins" && c.Type == discordgo.ChannelTypeGuildText {
 			return c, nil
 		}
 	}
 
-	for _, c := range guild.Channels {
-		if c.Name == "pins" {
+	// fallback to general pins channel
+	for _, c := range channels {
+		if c.Name == "pins" && c.Type == discordgo.ChannelTypeGuildText {
 			return c, nil
 		}
 	}
