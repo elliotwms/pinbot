@@ -4,15 +4,16 @@ import (
 	"context"
 	"crypto/ed25519"
 	"encoding/json"
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/bwmarrin/discordgo"
-	"github.com/elliotwms/pinbot/internal/router"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/bwmarrin/discordgo"
+	"github.com/elliotwms/pinbot/internal/endpoint"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type PingStage struct {
@@ -37,7 +38,7 @@ func NewPingStage(t *testing.T) (*PingStage, *PingStage, *PingStage) {
 		assert:     assert.New(t),
 		require:    require.New(t),
 		session:    session,
-		handler:    router.New(session).WithPublicKey(publicKey).Handle,
+		handler:    endpoint.New(session).WithPublicKey(publicKey).Handle,
 		privateKey: privateKey,
 	}
 

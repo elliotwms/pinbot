@@ -6,7 +6,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/bwmarrin/snowflake"
 	"github.com/elliotwms/pinbot/internal/commandhandlers"
-	"github.com/elliotwms/pinbot/internal/router"
+	"github.com/elliotwms/pinbot/internal/endpoint"
 	"net/http"
 	"os"
 	"strings"
@@ -56,7 +56,7 @@ func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
 		require:   require.New(t),
 		assert:    assert.New(t),
 		logHook:   test.NewLocal(log),
-		handler:   router.New(session).WithApplicationCommand("Pin", commandhandlers.PinMessageCommandHandler).Handle,
+		handler:   endpoint.New(session).WithApplicationCommand("Pin", commandhandlers.PinMessageCommandHandler).Handle,
 		snowflake: node,
 	}
 

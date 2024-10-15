@@ -1,13 +1,15 @@
 package main
 
 import (
-	"github.com/elliotwms/pinbot/internal/commandhandlers"
-	"github.com/elliotwms/pinbot/internal/commands"
+	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/bwmarrin/discordgo"
-	"github.com/elliotwms/pinbot/internal/router"
+	"github.com/elliotwms/pinbot/internal/commandhandlers"
+	"github.com/elliotwms/pinbot/internal/commands"
+	"github.com/elliotwms/pinbot/internal/endpoint"
 )
 
 func main() {
@@ -16,7 +18,11 @@ func main() {
 		panic(err)
 	}
 
-	h := router.
+	if strings.ToLower(os.Getenv("DEBUG")) == "true" {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
+
+	h := endpoint.
 		New(s).
 		WithPublicKey([]byte(os.Getenv("DISCORD_PUBLIC_KEY"))).
 		WithApplicationCommand(commands.Pin.Name, commandhandlers.PinMessageCommandHandler)

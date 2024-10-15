@@ -1,4 +1,4 @@
-package router
+package endpoint
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-type Router struct {
+type Endpoint struct {
 	s         *discordgo.Session
 	handlers  map[string]CommandHandler
 	publicKey ed25519.PublicKey
@@ -19,25 +19,25 @@ type Router struct {
 
 type CommandHandler func(s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) (string, error)
 
-func New(s *discordgo.Session) *Router {
-	return &Router{
+func New(s *discordgo.Session) *Endpoint {
+	return &Endpoint{
 		s:        s,
 		handlers: map[string]CommandHandler{},
 	}
 }
 
-func (r *Router) WithPublicKey(key ed25519.PublicKey) *Router {
+func (r *Endpoint) WithPublicKey(key ed25519.PublicKey) *Endpoint {
 	r.publicKey = key
 
 	return r
 }
 
-func (r *Router) WithApplicationCommand(name string, handler CommandHandler) *Router {
+func (r *Endpoint) WithApplicationCommand(name string, handler CommandHandler) *Endpoint {
 	r.handlers[name] = handler
 	return r
 }
 
-func (r *Router) Handle(_ context.Context, event *events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, error) {
+func (r *Endpoint) Handle(_ context.Context, event *events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, error) {
 	if event == nil {
 		return nil, fmt.Errorf("received nil event")
 	}
@@ -71,7 +71,7 @@ func (r *Router) Handle(_ context.Context, event *events.APIGatewayProxyRequest)
 	}, nil
 }
 
-func (r *Router) verify(event *events.APIGatewayProxyRequest) bool {
+func (r *Endpoint) verify(event *events.APIGatewayProxyRequest) bool {
 	if len(r.publicKey) == 0 {
 		return true
 	}
@@ -89,7 +89,7 @@ func (r *Router) verify(event *events.APIGatewayProxyRequest) bool {
 	return ed25519.Verify(r.publicKey, verify, []byte(sig))
 }
 
-func (r *Router) handleInteraction(i *discordgo.InteractionCreate) (*discordgo.InteractionResponse, error) {
+func (r *Endpoint) handleInteraction(i *discordgo.InteractionCreate) (*discordgo.InteractionResponse, error) {
 	switch i.Type {
 	case discordgo.InteractionPing:
 		return &discordgo.InteractionResponse{Type: discordgo.InteractionResponsePong}, nil
