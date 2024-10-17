@@ -12,7 +12,7 @@ import (
 )
 
 type Endpoint struct {
-	s         *discordgo.Session
+	s         *discordgo.Session // todo make this generic by injecting the session per handler (this is an explicit dependency)
 	handlers  map[string]CommandHandler
 	publicKey ed25519.PublicKey
 }
