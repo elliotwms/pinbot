@@ -1,5 +1,6 @@
 users:
   - username: Pinbot
+    id: 1290742494824366183
     discriminator: "0451"
     bot: true
     token: bot

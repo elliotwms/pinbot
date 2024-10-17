@@ -2,34 +2,29 @@ package commandhandlers
 
 import (
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/sirupsen/logrus"
 )
 
 const (
-	emojiPinned = "📌"
+	emojiPinned     = "📌"
+	pinMessageColor = 0xbb0303
 )
-
-const pinMessageColor = 0xbb0303
 
 func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) (userFeedback string, err error) {
 	m := data.Resolved.Messages[data.TargetID]
 	m.GuildID = i.GuildID // guildID is missing from message in resolved context
 
-	log := logrus.WithFields(logrus.Fields{
-		"guild_id":   i.GuildID,
-		"channel_id": i.ChannelID,
-		"message_id": m.ID,
-	})
+	log := slog.With("guild_id", i.GuildID, "channel_id", i.ChannelID, "message_id", m.ID)
 
 	log.Debug("Pinning message")
 
-	pinned, err := isAlreadyPinned(s, m)
+	pinned, err := isAlreadyPinned(s, i, m)
 	if err != nil {
 		// proceed but assume the message is not already pinned
-		log.WithError(err).Error("Could not check if message is already pinned. Assuming unpinned...")
+		log.Error("Could not check if message is already pinned. Assuming unpinned...", "error", err)
 	}
 	if pinned {
 		return "🔄 Message already pinned", nil
@@ -41,34 +36,31 @@ func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCrea
 	}
 
 	// determine the target pin channel for the message
-	targetChannel, err := getTargetChannel(s, i.GuildID, sourceChannel)
+	targetChannel, err := getTargetChannel(s, log, i.GuildID, sourceChannel)
 	if err != nil {
 		return "💩 Temporary error, please retry", fmt.Errorf("determine target channel: %w", err)
 	}
 
-	l := log.WithField("target_channel_id", targetChannel.ID)
+	log = log.With("target_channel_id", targetChannel.ID)
 
 	// build the rich embed pin message
 	pinMessage := buildPinMessage(sourceChannel, m, i.Member.User)
 
 	// send the pin message
+	log.Debug("Pinning message")
 	pin, err := s.ChannelMessageSendComplex(targetChannel.ID, pinMessage)
 	if err != nil {
 		return "🙅 Could not send pin message. Please check bot permissions", fmt.Errorf("send pin message: %w", err)
 	}
 
 	// mark the message as done
-	react(s, m, emojiPinned, l)
+	if err := s.MessageReactionAdd(m.ChannelID, m.ID, emojiPinned); err != nil {
+		log.Error("Could not react to message", "error", err)
+	}
 
-	l.Info("Pinned message")
+	log.Info("Pinned message")
 
 	return "📌 Pinned: " + url(i.GuildID, pin.ChannelID, pin.ID), nil
-}
-
-func react(s *discordgo.Session, m *discordgo.Message, emoji string, l *logrus.Entry) {
-	if err := s.MessageReactionAdd(m.ChannelID, m.ID, emoji); err != nil {
-		l.WithError(err).Error("Could not react to message")
-	}
 }
 
 func url(guildID, channelID, messageID string) string {
@@ -144,14 +136,14 @@ func buildPinMessage(sourceChannel *discordgo.Channel, m *discordgo.Message, pin
 	return pinMessage
 }
 
-func isAlreadyPinned(s *discordgo.Session, m *discordgo.Message) (bool, error) {
+func isAlreadyPinned(s *discordgo.Session, i *discordgo.InteractionCreate, m *discordgo.Message) (bool, error) {
 	acks, err := s.MessageReactions(m.ChannelID, m.ID, emojiPinned, 0, "", "")
 	if err != nil {
 		return false, err
 	}
 
 	for _, ack := range acks {
-		if ack.ID == s.State.User.ID {
+		if ack.ID == i.AppID {
 			return true, nil
 		}
 	}
@@ -163,7 +155,8 @@ func isAlreadyPinned(s *discordgo.Session, m *discordgo.Message) (bool, error) {
 // #channel-pins (a specific pin channel)
 // #pins (a generic pin channel)
 // #channel (the channel itself)
-func getTargetChannel(s *discordgo.Session, guildID string, origin *discordgo.Channel) (*discordgo.Channel, error) {
+func getTargetChannel(s *discordgo.Session, log *slog.Logger, guildID string, origin *discordgo.Channel) (*discordgo.Channel, error) {
+	log.Debug("Getting guild channels")
 	channels, err := s.GuildChannels(guildID)
 	if err != nil {
 		return nil, err

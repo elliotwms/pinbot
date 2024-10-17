@@ -35,7 +35,7 @@ func TestMain(m *testing.M) {
 
 func openSession() {
 	var err error
-	session, err = discordgo.New(fmt.Sprintf("Bot token"))
+	session, err = discordgo.New(fmt.Sprintf("Bot bot"))
 	if err != nil {
 		panic(err)
 	}

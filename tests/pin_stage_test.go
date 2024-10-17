@@ -3,19 +3,16 @@ package tests
 import (
 	"context"
 	"encoding/json"
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/bwmarrin/snowflake"
-	"github.com/elliotwms/pinbot/internal/commandhandlers"
-	"github.com/elliotwms/pinbot/internal/endpoint"
-	"net/http"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/bwmarrin/discordgo"
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
+	"github.com/bwmarrin/snowflake"
+	"github.com/elliotwms/pinbot/internal/commandhandlers"
+	"github.com/elliotwms/pinbot/internal/endpoint"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,12 +23,9 @@ type PinStage struct {
 	require *require.Assertions
 	assert  *assert.Assertions
 
-	handler func(_ context.Context, event *events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, error)
-	res     *events.APIGatewayProxyResponse
+	handler func(_ context.Context, event *events.LambdaFunctionURLRequest) (*events.LambdaFunctionURLResponse, error)
+	res     *events.LambdaFunctionURLResponse
 
-	log *logrus.Logger
-
-	logHook             *test.Hook
 	sendMessage         *discordgo.MessageSend
 	channel             *discordgo.Channel
 	expectedPinsChannel *discordgo.Channel
@@ -44,19 +38,13 @@ type PinStage struct {
 }
 
 func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
-	if os.Getenv("TEST_DEBUG") != "" {
-		log.SetLevel(logrus.DebugLevel)
-	}
-
 	node, _ := snowflake.NewNode(0)
 	s := &PinStage{
 		t:         t,
-		log:       log,
 		session:   session,
 		require:   require.New(t),
 		assert:    assert.New(t),
-		logHook:   test.NewLocal(log),
-		handler:   endpoint.New(session).WithApplicationCommand("Pin", commandhandlers.PinMessageCommandHandler).Handle,
+		handler:   endpoint.New([]byte{}, "").WithSession(session).WithApplicationCommand("Pin", commandhandlers.PinMessageCommandHandler).Handle,
 		snowflake: node,
 	}
 
@@ -116,7 +104,7 @@ func (s *PinStage) the_pin_command_is_sent_for_the_message() *PinStage {
 	bs, err := json.Marshal(&discordgo.InteractionCreate{
 		&discordgo.Interaction{
 			ID:    s.snowflake.Generate().String(),
-			AppID: "",
+			AppID: "1290742494824366183",
 			Type:  discordgo.InteractionApplicationCommand,
 			Data: discordgo.ApplicationCommandInteractionData{
 				ID:          s.snowflake.Generate().String(), // todo command ID
@@ -143,9 +131,8 @@ func (s *PinStage) the_pin_command_is_sent_for_the_message() *PinStage {
 	})
 	s.require.NoError(err)
 
-	s.res, err = s.handler(context.Background(), &events.APIGatewayProxyRequest{
-		HTTPMethod:      http.MethodPost,
-		RequestContext:  events.APIGatewayProxyRequestContext{},
+	s.res, err = s.handler(context.Background(), &events.LambdaFunctionURLRequest{
+		RequestContext:  events.LambdaFunctionURLRequestContext{},
 		Body:            string(bs),
 		IsBase64Encoded: false,
 	})
@@ -270,20 +257,6 @@ func (s *PinStage) the_import_is_cleaned_up() *PinStage {
 	s.messages = []*discordgo.Message{}
 
 	s.require.NoError(s.session.MessageReactionsRemoveAll(s.message.ChannelID, s.message.ID))
-
-	return s
-}
-
-func (s *PinStage) the_bot_should_log(log string) *PinStage {
-	s.require.Eventually(func() bool {
-		for _, e := range s.logHook.AllEntries() {
-			if e.Message == log {
-				return true
-			}
-		}
-
-		return false
-	}, 5*time.Second, 10*time.Millisecond)
 
 	return s
 }

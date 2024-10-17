@@ -3,8 +3,8 @@ package tests
 import (
 	"context"
 	"crypto/ed25519"
+	"encoding/hex"
 	"encoding/json"
-	"net/http"
 	"strconv"
 	"testing"
 	"time"
@@ -20,8 +20,8 @@ type PingStage struct {
 	t           *testing.T
 	session     *discordgo.Session
 	require     *require.Assertions
-	handler     func(context.Context, *events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, error)
-	res         *events.APIGatewayProxyResponse
+	handler     func(context.Context, *events.LambdaFunctionURLRequest) (*events.LambdaFunctionURLResponse, error)
+	res         *events.LambdaFunctionURLResponse
 	assert      *assert.Assertions
 	privateKey  ed25519.PrivateKey
 	omitHeaders bool
@@ -38,7 +38,7 @@ func NewPingStage(t *testing.T) (*PingStage, *PingStage, *PingStage) {
 		assert:     assert.New(t),
 		require:    require.New(t),
 		session:    session,
-		handler:    endpoint.New(session).WithPublicKey(publicKey).Handle,
+		handler:    endpoint.New(publicKey, "").WithSession(session).Handle,
 		privateKey: privateKey,
 	}
 
@@ -60,14 +60,13 @@ func (s *PingStage) a_ping_is_sent() *PingStage {
 	ts := strconv.FormatInt(time.Now().Unix(), 10)
 	sign := ed25519.Sign(s.privateKey, append([]byte(ts), bs...))
 
-	req := &events.APIGatewayProxyRequest{
-		HTTPMethod: http.MethodPost,
-		Body:       string(bs),
+	req := &events.LambdaFunctionURLRequest{
+		Body: string(bs),
 	}
 
 	if !s.omitHeaders {
 		req.Headers = map[string]string{
-			"X-Signature-Ed25519":   string(sign),
+			"X-Signature-Ed25519":   hex.EncodeToString(sign),
 			"X-Signature-Timestamp": ts,
 		}
 	}
