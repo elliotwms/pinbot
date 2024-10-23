@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/elliotwms/pinbot/internal/build"
 	"github.com/winebarrel/secretlamb"
 	"log/slog"
 	"net/http"
@@ -57,7 +58,12 @@ func (r *Endpoint) Handle(_ context.Context, event *events.LambdaFunctionURLRequ
 
 	bs := []byte(event.Body)
 
-	slog.Info("Received request", "user_agent", event.RequestContext.HTTP.UserAgent, "method", event.RequestContext.HTTP.Method)
+	slog.Info(
+		"Received request",
+		slog.String("user_agent", event.RequestContext.HTTP.UserAgent),
+		slog.String("method", event.RequestContext.HTTP.Method),
+		slog.String("version", build.Version),
+	)
 
 	if err := r.verify(event); err != nil {
 		slog.Error("Failed to verify signature", "error", err)
