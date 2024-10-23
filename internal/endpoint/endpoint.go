@@ -18,7 +18,6 @@ import (
 
 const (
 	envToken        = "PARAM_DISCORD_TOKEN"
-	headerUserAgent = "User-Agent"
 	headerSignature = "X-Signature-Ed25519"
 	headerTimestamp = "X-Signature-Timestamp"
 )
@@ -30,7 +29,7 @@ type Endpoint struct {
 	applicationID string
 }
 
-type CommandHandler func(s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) (string, error)
+type CommandHandler func(s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) error
 
 func New(publicKey ed25519.PublicKey, applicationID string) *Endpoint {
 	return &Endpoint{
@@ -77,13 +76,17 @@ func (r *Endpoint) Handle(_ context.Context, event *events.LambdaFunctionURLRequ
 		return nil, err
 	}
 
+	if response == nil {
+		return &events.LambdaFunctionURLResponse{StatusCode: http.StatusAccepted}, nil
+	}
+
 	bs, err = json.Marshal(response)
 	if err != nil {
 		return nil, err
 	}
 
 	return &events.LambdaFunctionURLResponse{
-		StatusCode: 200,
+		StatusCode: http.StatusOK,
 		Body:       string(bs),
 	}, nil
 }
@@ -122,12 +125,20 @@ func (r *Endpoint) verify(event *events.LambdaFunctionURLRequest) error {
 }
 
 func (r *Endpoint) handleInteraction(i *discordgo.InteractionCreate) (*discordgo.InteractionResponse, error) {
-	slog.Info("Handling interaction", "type", i.Type)
+	slog.Info("Handling interaction", "type", i.Type, "interaction_id", i.ID)
 
 	switch i.Type {
 	case discordgo.InteractionPing:
 		return &discordgo.InteractionResponse{Type: discordgo.InteractionResponsePong}, nil
 	case discordgo.InteractionApplicationCommand:
+		// respond ASAP using the interaction's token
+		is, _ := discordgo.New("Bot " + i.Token)
+		if err := is.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		}); err != nil {
+			return nil, fmt.Errorf("initial respond: %w", err)
+		}
+
 		s, err := r.session()
 		if err != nil {
 			return nil, err
@@ -140,11 +151,11 @@ func (r *Endpoint) handleInteraction(i *discordgo.InteractionCreate) (*discordgo
 			return nil, fmt.Errorf("unknown command: %s", data.Name)
 		}
 
-		res, err := h(s, i, data)
-		return &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{Content: res},
-		}, err
+		if err = h(s, i, data); err != nil {
+			return nil, fmt.Errorf("handle: %w", err)
+		}
+
+		return nil, nil
 	default:
 		return &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -153,6 +164,7 @@ func (r *Endpoint) handleInteraction(i *discordgo.InteractionCreate) (*discordgo
 	}
 }
 
+// session returns the Bot session, initialising it if non-existent
 func (r *Endpoint) session() (*discordgo.Session, error) {
 	if r.s != nil {
 		return r.s, nil
@@ -166,6 +178,7 @@ func (r *Endpoint) session() (*discordgo.Session, error) {
 	return r.s, err
 }
 
+// initDiscordSession initialises the Discord Session using the token stored in param store
 func initDiscordSession() (*discordgo.Session, error) {
 	paramName := os.Getenv(envToken)
 	if paramName == "" {

@@ -13,7 +13,7 @@ const (
 	pinMessageColor = 0xbb0303
 )
 
-func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) (userFeedback string, err error) {
+func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) (err error) {
 	m := data.Resolved.Messages[data.TargetID]
 	m.GuildID = i.GuildID // guildID is missing from message in resolved context
 
@@ -27,18 +27,20 @@ func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCrea
 		log.Error("Could not check if message is already pinned. Assuming unpinned...", "error", err)
 	}
 	if pinned {
-		return "🔄 Message already pinned", nil
+		return respond(s, i.Interaction, "🔄 Message already pinned")
 	}
 
 	sourceChannel, err := s.Channel(m.ChannelID)
 	if err != nil {
-		return "💩 Temporary error, please retry", fmt.Errorf("determine source channel: %w", err)
+		log.Error("Could not determine source channel", "error", err)
+		return respond(s, i.Interaction, "💩 Temporary error, please retry")
 	}
 
 	// determine the target pin channel for the message
 	targetChannel, err := getTargetChannel(s, log, i.GuildID, sourceChannel)
 	if err != nil {
-		return "💩 Temporary error, please retry", fmt.Errorf("determine target channel: %w", err)
+		log.Error("Could not determine target channel", "error", err)
+		return respond(s, i.Interaction, "💩 Temporary error, please retry")
 	}
 
 	log = log.With("target_channel_id", targetChannel.ID)
@@ -50,7 +52,8 @@ func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCrea
 	log.Debug("Pinning message")
 	pin, err := s.ChannelMessageSendComplex(targetChannel.ID, pinMessage)
 	if err != nil {
-		return "🙅 Could not send pin message. Please check bot permissions", fmt.Errorf("send pin message: %w", err)
+		log.Error("Could not send pin message", "error", err)
+		return respond(s, i.Interaction, "🙅 Could not send pin message. Please ensure bot has permission to post in "+targetChannel.Mention())
 	}
 
 	// mark the message as done
@@ -60,7 +63,15 @@ func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCrea
 
 	log.Info("Pinned message")
 
-	return "📌 Pinned: " + url(i.GuildID, pin.ChannelID, pin.ID), nil
+	return respond(s, i.Interaction, "📌 Pinned: "+url(i.GuildID, pin.ChannelID, pin.ID))
+}
+
+func respond(s *discordgo.Session, i *discordgo.Interaction, c string) error {
+	_, err := s.InteractionResponseEdit(i, &discordgo.WebhookEdit{
+		Content: &c,
+	})
+
+	return err
 }
 
 func url(guildID, channelID, messageID string) string {

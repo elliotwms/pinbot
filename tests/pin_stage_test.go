@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -25,16 +26,17 @@ type PinStage struct {
 
 	handler func(_ context.Context, event *events.LambdaFunctionURLRequest) (*events.LambdaFunctionURLResponse, error)
 	res     *events.LambdaFunctionURLResponse
+	err     error
 
 	sendMessage         *discordgo.MessageSend
 	channel             *discordgo.Channel
 	expectedPinsChannel *discordgo.Channel
-	message             *discordgo.Message
 
-	messages            []*discordgo.Message
-	pinMessage          *discordgo.Message
-	snowflake           *snowflake.Node
-	interactionResponse *discordgo.InteractionResponse
+	message     *discordgo.Message
+	messages    []*discordgo.Message
+	pinMessage  *discordgo.Message
+	snowflake   *snowflake.Node
+	interaction *discordgo.Interaction
 }
 
 func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
@@ -101,10 +103,10 @@ func (s *PinStage) the_message_is_posted() *PinStage {
 }
 
 func (s *PinStage) the_pin_command_is_sent_for_the_message() *PinStage {
-	bs, err := json.Marshal(&discordgo.InteractionCreate{
-		&discordgo.Interaction{
+	i := &discordgo.InteractionCreate{
+		Interaction: &discordgo.Interaction{
 			ID:    s.snowflake.Generate().String(),
-			AppID: "1290742494824366183",
+			AppID: testAppID,
 			Type:  discordgo.InteractionApplicationCommand,
 			Data: discordgo.ApplicationCommandInteractionData{
 				ID:          s.snowflake.Generate().String(), // todo command ID
@@ -128,10 +130,18 @@ func (s *PinStage) the_pin_command_is_sent_for_the_message() *PinStage {
 			Context: discordgo.InteractionContextGuild,
 			Version: 1,
 		},
-	})
+	}
+
+	// create the interaction in fakediscord
+	i, err := fakediscord.Interaction(i)
 	s.require.NoError(err)
 
-	s.res, err = s.handler(context.Background(), &events.LambdaFunctionURLRequest{
+	s.interaction = i.Interaction
+
+	bs, err := json.Marshal(i)
+	s.require.NoError(err)
+
+	s.res, s.err = s.handler(context.Background(), &events.LambdaFunctionURLRequest{
 		RequestContext:  events.LambdaFunctionURLRequestContext{},
 		Body:            string(bs),
 		IsBase64Encoded: false,
@@ -140,15 +150,14 @@ func (s *PinStage) the_pin_command_is_sent_for_the_message() *PinStage {
 		return nil
 	}
 
-	s.interactionResponse = &discordgo.InteractionResponse{}
-	s.require.NoError(json.Unmarshal([]byte(s.res.Body), s.interactionResponse))
+	s.require.Equal(http.StatusAccepted, s.res.StatusCode)
+	s.require.Empty(s.res.Body)
 
 	return s
 }
 
 func (s *PinStage) a_pin_message_should_be_posted_in_the_last_channel() *PinStage {
 	s.require.Eventually(func() bool {
-		s.t.Logf("msgs: %d", len(s.messages))
 		for _, m := range s.messages {
 			if m.ChannelID != s.expectedPinsChannel.ID {
 				continue
@@ -200,7 +209,16 @@ func (s *PinStage) the_message_is_already_marked_as_pinned() {
 }
 
 func (s *PinStage) the_bot_should_respond_with_message_containing(m string) *PinStage {
-	s.require.Contains(s.interactionResponse.Data.Content, m)
+	s.require.Eventually(func() bool {
+		res, err := s.session.InteractionResponse(s.interaction)
+		if err != nil {
+			return false
+		}
+
+		s.t.Logf("asserting '%s' contains '%s'", res.Content, m)
+
+		return strings.Contains(res.Content, m)
+	}, 5*time.Second, 100*time.Millisecond)
 
 	return s
 }

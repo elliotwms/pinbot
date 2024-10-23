@@ -6,8 +6,7 @@ require (
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/bwmarrin/snowflake v0.3.0
-	github.com/elliotwms/fakediscord v0.12.18
-	github.com/sirupsen/logrus v1.9.3
+	github.com/elliotwms/fakediscord v0.15.0
 	github.com/stretchr/testify v1.9.0
 	github.com/winebarrel/secretlamb v0.3.0
 )

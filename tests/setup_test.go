@@ -1,28 +1,26 @@
 package tests
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/elliotwms/fakediscord/pkg/fakediscord"
-	"github.com/sirupsen/logrus"
+	pkgfakediscord "github.com/elliotwms/fakediscord/pkg/fakediscord"
 )
 
 const testGuildName = "Pinbot Integration Testing"
+const testAppID = "1290742494824366183"
+const testToken = "bot"
 
 var (
 	session     *discordgo.Session
 	testGuildID string
+	fakediscord *pkgfakediscord.Client
 )
 
-var log = logrus.New()
-
 func TestMain(m *testing.M) {
-	fakediscord.Configure("http://localhost:8080/")
-
-	log.SetLevel(logrus.DebugLevel)
+	pkgfakediscord.Configure("http://localhost:8080/")
+	fakediscord = pkgfakediscord.NewClient(testToken)
 
 	openSession()
 
@@ -35,7 +33,7 @@ func TestMain(m *testing.M) {
 
 func openSession() {
 	var err error
-	session, err = discordgo.New(fmt.Sprintf("Bot bot"))
+	session, err = discordgo.New("Bot " + testToken)
 	if err != nil {
 		panic(err)
 	}
