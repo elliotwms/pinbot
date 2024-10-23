@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -21,28 +22,48 @@ func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCrea
 
 	log.Debug("Pinning message")
 
-	pinned, err := isAlreadyPinned(s, i, m)
-	if err != nil {
-		// proceed but assume the message is not already pinned
-		log.Error("Could not check if message is already pinned. Assuming unpinned...", "error", err)
+	// API operations are slow, so fanout and execute concurrently
+	var pinned bool
+	var channels []*discordgo.Channel
+
+	group := errgroup.Group{}
+	group.Go(func() error {
+		var err error
+		pinned, err = isAlreadyPinned(s, i, m)
+		if err != nil {
+			log.Error("Could not check if message is already pinned", "error", err)
+		}
+		return err
+	})
+	group.Go(func() error {
+		var err error
+		channels, err = s.GuildChannels(i.GuildID)
+		if err != nil {
+			log.Error("Could not get guild channels", "error", err)
+		}
+		return err
+	})
+
+	if err := group.Wait(); err != nil {
+		return respond(s, i.Interaction, "💩 Temporary error, please retry")
 	}
+
 	if pinned {
 		return respond(s, i.Interaction, "🔄 Message already pinned")
 	}
 
-	sourceChannel, err := s.Channel(m.ChannelID)
+	sourceChannel, err := getSourceChannel(channels, m.ChannelID)
 	if err != nil {
 		log.Error("Could not determine source channel", "error", err)
 		return respond(s, i.Interaction, "💩 Temporary error, please retry")
 	}
 
 	// determine the target pin channel for the message
-	targetChannel, err := getTargetChannel(s, log, i.GuildID, sourceChannel)
+	targetChannel, err := getTargetChannel(channels, sourceChannel)
 	if err != nil {
 		log.Error("Could not determine target channel", "error", err)
 		return respond(s, i.Interaction, "💩 Temporary error, please retry")
 	}
-
 	log = log.With("target_channel_id", targetChannel.ID)
 
 	// build the rich embed pin message
@@ -61,9 +82,19 @@ func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCrea
 		log.Error("Could not react to message", "error", err)
 	}
 
-	log.Info("Pinned message")
+	log.Info("Pinned message", "pin_message_id", pin.ID)
 
 	return respond(s, i.Interaction, "📌 Pinned: "+url(i.GuildID, pin.ChannelID, pin.ID))
+}
+
+func getSourceChannel(channels []*discordgo.Channel, id string) (*discordgo.Channel, error) {
+	for _, channel := range channels {
+		if channel.ID == id {
+			return channel, nil
+		}
+	}
+
+	return nil, fmt.Errorf("could not find channel with id %s", id)
 }
 
 func respond(s *discordgo.Session, i *discordgo.Interaction, c string) error {
@@ -166,13 +197,7 @@ func isAlreadyPinned(s *discordgo.Session, i *discordgo.InteractionCreate, m *di
 // #channel-pins (a specific pin channel)
 // #pins (a generic pin channel)
 // #channel (the channel itself)
-func getTargetChannel(s *discordgo.Session, log *slog.Logger, guildID string, origin *discordgo.Channel) (*discordgo.Channel, error) {
-	log.Debug("Getting guild channels")
-	channels, err := s.GuildChannels(guildID)
-	if err != nil {
-		return nil, err
-	}
-
+func getTargetChannel(channels []*discordgo.Channel, origin *discordgo.Channel) (*discordgo.Channel, error) {
 	// use the same channel by default
 	channel := origin
 
