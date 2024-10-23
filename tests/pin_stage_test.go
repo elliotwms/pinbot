@@ -127,7 +127,6 @@ func (s *PinStage) the_pin_command_is_sent_for_the_message() *PinStage {
 					ID: s.snowflake.Generate().String(),
 				},
 			},
-			Context: discordgo.InteractionContextGuild,
 			Version: 1,
 		},
 	}

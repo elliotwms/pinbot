@@ -135,6 +135,9 @@ func (r *Endpoint) handleInteraction(i *discordgo.InteractionCreate) (*discordgo
 		is, _ := discordgo.New("Bot " + i.Token)
 		if err := is.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Flags: discordgo.MessageFlagsEphemeral,
+			},
 		}); err != nil {
 			return nil, fmt.Errorf("initial respond: %w", err)
 		}
