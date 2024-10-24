@@ -38,7 +38,7 @@ func NewPingStage(t *testing.T) (*PingStage, *PingStage, *PingStage) {
 		assert:     assert.New(t),
 		require:    require.New(t),
 		session:    session,
-		handler:    endpoint.New(publicKey, "").WithSession(session).Handle,
+		handler:    endpoint.New(publicKey).WithSession(session).Handle,
 		privateKey: privateKey,
 	}
 

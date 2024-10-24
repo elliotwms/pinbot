@@ -47,7 +47,7 @@ func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
 		session:   session,
 		require:   require.New(t),
 		assert:    assert.New(t),
-		handler:   endpoint.New([]byte{}, "").WithSession(session).WithApplicationCommand("Pin", commandhandlers.PinMessageCommandHandler).Handle,
+		handler:   endpoint.New([]byte{}).WithSession(session).WithApplicationCommand("Pin", commandhandlers.PinMessageCommandHandler).Handle,
 		snowflake: node,
 	}
 

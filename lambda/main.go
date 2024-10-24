@@ -24,10 +24,8 @@ func main() {
 		panic(err)
 	}
 
-	id := os.Getenv("DISCORD_BOT_APPLICATION_ID")
-
 	h := endpoint.
-		New(k, id).
+		New(k).
 		WithApplicationCommand(commands.Pin.Name, commandhandlers.PinMessageCommandHandler)
 
 	lambda.Start(h.Handle)

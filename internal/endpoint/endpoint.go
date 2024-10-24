@@ -26,19 +26,17 @@ const (
 )
 
 type Endpoint struct {
-	s             *discordgo.Session
-	handlers      map[string]CommandHandler
-	publicKey     ed25519.PublicKey
-	applicationID string
+	s         *discordgo.Session
+	handlers  map[string]CommandHandler
+	publicKey ed25519.PublicKey
 }
 
 type CommandHandler func(s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) error
 
-func New(publicKey ed25519.PublicKey, applicationID string) *Endpoint {
+func New(publicKey ed25519.PublicKey) *Endpoint {
 	return &Endpoint{
-		publicKey:     publicKey,
-		applicationID: applicationID,
-		handlers:      map[string]CommandHandler{},
+		publicKey: publicKey,
+		handlers:  map[string]CommandHandler{},
 	}
 }
 
