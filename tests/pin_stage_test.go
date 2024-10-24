@@ -37,6 +37,7 @@ type PinStage struct {
 	pinMessage  *discordgo.Message
 	snowflake   *snowflake.Node
 	interaction *discordgo.Interaction
+	command     *discordgo.ApplicationCommand
 }
 
 func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
@@ -131,6 +132,10 @@ func (s *PinStage) the_pin_command_is_sent_for_the_message() *PinStage {
 		},
 	}
 
+	return s.sendInteraction(i)
+}
+
+func (s *PinStage) sendInteraction(i *discordgo.InteractionCreate) *PinStage {
 	// create the interaction in fakediscord
 	i, err := fakediscord.Interaction(i)
 	s.require.NoError(err)
@@ -145,10 +150,8 @@ func (s *PinStage) the_pin_command_is_sent_for_the_message() *PinStage {
 		Body:            string(bs),
 		IsBase64Encoded: false,
 	})
-	if err != nil {
-		return nil
-	}
 
+	s.require.NoError(s.err)
 	s.require.Equal(http.StatusAccepted, s.res.StatusCode)
 	s.require.Empty(s.res.Body)
 
@@ -213,8 +216,6 @@ func (s *PinStage) the_bot_should_respond_with_message_containing(m string) *Pin
 		if err != nil {
 			return false
 		}
-
-		s.t.Logf("asserting '%s' contains '%s'", res.Content, m)
 
 		return strings.Contains(res.Content, m)
 	}, 5*time.Second, 100*time.Millisecond)
@@ -310,4 +311,36 @@ func (s *PinStage) the_bot_should_successfully_acknowledge_the_pin() *PinStage {
 	return s.
 		the_bot_should_add_the_emoji("📌").and().
 		the_bot_should_respond_with_message_containing("📌 Pinned")
+}
+
+func (s *PinStage) a_stale_command() *PinStage {
+	var err error
+	s.command, err = session.ApplicationCommandCreate(testAppID, testGuildID, &discordgo.ApplicationCommand{
+		Name: "import",
+		Type: discordgo.ChatApplicationCommand,
+	})
+	s.require.NoError(err)
+
+	return s
+}
+
+func (s *PinStage) the_stale_command_is_triggered() {
+	s.sendInteraction(&discordgo.InteractionCreate{
+		Interaction: &discordgo.Interaction{
+			Type:    discordgo.InteractionApplicationCommand,
+			GuildID: testGuildID,
+			Data: &discordgo.ApplicationCommandInteractionData{
+				Name: "import",
+				ID:   s.command.ID,
+			},
+		},
+	})
+}
+
+func (s *PinStage) the_stale_command_should_be_deleted() {
+	s.require.Eventually(func() bool {
+		_, err := session.ApplicationCommand(testAppID, testGuildID, s.command.ID)
+
+		return err != nil
+	}, time.Second, 50*time.Millisecond)
 }

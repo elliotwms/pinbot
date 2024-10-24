@@ -144,3 +144,17 @@ func TestPinPersistsEmbeds(t *testing.T) {
 		a_pin_message_should_be_posted_in_the_last_channel().and().
 		the_pin_message_should_have_n_embeds(2) // the pin embed + link
 }
+
+func TestPin_StaleCommand(t *testing.T) {
+	given, when, then := NewPinStage(t)
+
+	given.
+		a_stale_command()
+
+	when.
+		the_stale_command_is_triggered()
+
+	then.
+		the_bot_should_respond_with_message_containing("This command is no longer supported").and().
+		the_stale_command_should_be_deleted()
+}

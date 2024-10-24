@@ -21,6 +21,8 @@ const (
 	envToken        = "PARAM_DISCORD_TOKEN"
 	headerSignature = "X-Signature-Ed25519"
 	headerTimestamp = "X-Signature-Timestamp"
+
+	announcementURL = "https://discord.com/channels/1159611808722726912/1290727059261493358/1298783111265648693"
 )
 
 type Endpoint struct {
@@ -157,7 +159,7 @@ func (r *Endpoint) handleInteraction(i *discordgo.InteractionCreate) (*discordgo
 
 		h, ok := r.handlers[data.Name]
 		if !ok {
-			return nil, fmt.Errorf("unknown command: %s", data.Name)
+			return nil, cleanupStaleCommand(s, i, data)
 		}
 
 		if err = h(s, i, data); err != nil {
@@ -171,6 +173,24 @@ func (r *Endpoint) handleInteraction(i *discordgo.InteractionCreate) (*discordgo
 			Data: &discordgo.InteractionResponseData{Content: "Unexpected interaction"},
 		}, nil
 	}
+}
+
+func cleanupStaleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) error {
+	log := slog.With("name", data.Name, "id", data.ID, "interaction_id", i.ID, "guild_id", i.GuildID)
+
+	log.Info("Handling stale interaction")
+	content := "This command is no longer supported. See the Pinbot Discord for more details: " + announcementURL
+	_, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Content: &content,
+	})
+	if err != nil {
+		return err
+	}
+
+	slog.Debug("Removing stale command")
+
+	// remove stale guild command
+	return s.ApplicationCommandDelete(i.AppID, i.GuildID, data.ID)
 }
 
 // session returns the Bot session, initialising it if non-existent
