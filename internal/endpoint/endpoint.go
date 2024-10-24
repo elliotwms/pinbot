@@ -7,14 +7,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/elliotwms/pinbot/internal/build"
-	"github.com/winebarrel/secretlamb"
 	"log/slog"
 	"net/http"
 	"os"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/bwmarrin/discordgo"
+	"github.com/elliotwms/pinbot/internal/build"
+	"github.com/winebarrel/secretlamb"
 )
 
 const (
@@ -31,7 +32,7 @@ type Endpoint struct {
 	publicKey ed25519.PublicKey
 }
 
-type CommandHandler func(s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) error
+type CommandHandler func(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) error
 
 func New(publicKey ed25519.PublicKey) *Endpoint {
 	return &Endpoint{
@@ -51,7 +52,9 @@ func (r *Endpoint) WithApplicationCommand(name string, handler CommandHandler) *
 	return r
 }
 
-func (r *Endpoint) Handle(_ context.Context, event *events.LambdaFunctionURLRequest) (*events.LambdaFunctionURLResponse, error) {
+func (r *Endpoint) Handle(ctx context.Context, event *events.LambdaFunctionURLRequest) (res *events.LambdaFunctionURLResponse, err error) {
+	ctx, s := xray.BeginSubsegment(ctx, "handle")
+	defer s.Close(err)
 	if event == nil {
 		return nil, fmt.Errorf("received nil event")
 	}
@@ -65,7 +68,7 @@ func (r *Endpoint) Handle(_ context.Context, event *events.LambdaFunctionURLRequ
 		slog.String("version", build.Version),
 	)
 
-	if err := r.verify(event); err != nil {
+	if err = r.verify(ctx, event); err != nil {
 		slog.Error("Failed to verify signature", "error", err)
 		return &events.LambdaFunctionURLResponse{
 			StatusCode: http.StatusUnauthorized,
@@ -73,11 +76,11 @@ func (r *Endpoint) Handle(_ context.Context, event *events.LambdaFunctionURLRequ
 	}
 
 	var i *discordgo.InteractionCreate
-	if err := json.Unmarshal(bs, &i); err != nil {
+	if err = json.Unmarshal(bs, &i); err != nil {
 		return nil, err
 	}
 
-	response, err := r.handleInteraction(i)
+	response, err := r.handleInteraction(ctx, i)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +100,10 @@ func (r *Endpoint) Handle(_ context.Context, event *events.LambdaFunctionURLRequ
 	}, nil
 }
 
-func (r *Endpoint) verify(event *events.LambdaFunctionURLRequest) error {
+func (r *Endpoint) verify(ctx context.Context, event *events.LambdaFunctionURLRequest) error {
+	_, s := xray.BeginSubsegment(ctx, "verify")
+	defer s.Close(nil)
+
 	if len(r.publicKey) == 0 {
 		return nil
 	}
@@ -130,8 +136,11 @@ func (r *Endpoint) verify(event *events.LambdaFunctionURLRequest) error {
 	return nil
 }
 
-func (r *Endpoint) handleInteraction(i *discordgo.InteractionCreate) (*discordgo.InteractionResponse, error) {
+func (r *Endpoint) handleInteraction(ctx context.Context, i *discordgo.InteractionCreate) (*discordgo.InteractionResponse, error) {
 	slog.Info("Handling interaction", "type", i.Type, "interaction_id", i.ID)
+	ctx, seg := xray.BeginSubsegment(ctx, "handle interaction")
+	_ = seg.AddAnnotation("type", int(i.Type))
+	defer seg.Close(nil)
 
 	switch i.Type {
 	case discordgo.InteractionPing:
@@ -139,16 +148,17 @@ func (r *Endpoint) handleInteraction(i *discordgo.InteractionCreate) (*discordgo
 	case discordgo.InteractionApplicationCommand:
 		// respond ASAP using the interaction's token
 		is, _ := discordgo.New("Bot " + i.Token)
+		is.Client = xray.Client(is.Client)
 		if err := is.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Flags: discordgo.MessageFlagsEphemeral,
 			},
-		}); err != nil {
+		}, discordgo.WithContext(ctx)); err != nil {
 			return nil, fmt.Errorf("initial respond: %w", err)
 		}
 
-		s, err := r.session()
+		s, err := r.session(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -157,10 +167,16 @@ func (r *Endpoint) handleInteraction(i *discordgo.InteractionCreate) (*discordgo
 
 		h, ok := r.handlers[data.Name]
 		if !ok {
-			return nil, cleanupStaleCommand(s, i, data)
+			return nil, cleanupStaleCommand(ctx, s, i, data)
 		}
 
-		if err = h(s, i, data); err != nil {
+		ctx, seg = xray.BeginSubsegment(ctx, "handler")
+		_ = seg.AddAnnotation("name", data.Name)
+		defer seg.Close(err)
+
+		err = h(ctx, s, i, data)
+
+		if err != nil {
 			return nil, fmt.Errorf("handle: %w", err)
 		}
 
@@ -173,14 +189,14 @@ func (r *Endpoint) handleInteraction(i *discordgo.InteractionCreate) (*discordgo
 	}
 }
 
-func cleanupStaleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) error {
+func cleanupStaleCommand(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) error {
 	log := slog.With("name", data.Name, "id", data.ID, "interaction_id", i.ID, "guild_id", i.GuildID)
 
 	log.Info("Handling stale interaction")
 	content := "This command is no longer supported. See the Pinbot Discord for more details: " + announcementURL
 	_, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Content: &content,
-	})
+	}, discordgo.WithContext(ctx))
 	if err != nil {
 		return err
 	}
@@ -188,11 +204,14 @@ func cleanupStaleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, d
 	slog.Debug("Removing stale command")
 
 	// remove stale guild command
-	return s.ApplicationCommandDelete(i.AppID, i.GuildID, data.ID)
+	return s.ApplicationCommandDelete(i.AppID, i.GuildID, data.ID, discordgo.WithContext(ctx))
 }
 
 // session returns the Bot session, initialising it if non-existent
-func (r *Endpoint) session() (*discordgo.Session, error) {
+func (r *Endpoint) session(ctx context.Context) (*discordgo.Session, error) {
+	_, s := xray.BeginSubsegment(ctx, "get session")
+	defer s.Close(nil)
+
 	if r.s != nil {
 		return r.s, nil
 	}
@@ -213,7 +232,8 @@ func initDiscordSession() (*discordgo.Session, error) {
 	}
 
 	slog.Debug("Retrieving token")
-	p, err := secretlamb.MustNewParameters().GetWithDecryption(paramName)
+	parameters := secretlamb.MustNewParameters()
+	p, err := parameters.GetWithDecryption(paramName)
 	if err != nil {
 		return nil, err
 	}
@@ -224,5 +244,8 @@ func initDiscordSession() (*discordgo.Session, error) {
 		return nil, fmt.Errorf("parameter empty")
 	}
 
-	return discordgo.New("Bot " + p.Parameter.Value)
+	s, _ := discordgo.New("Bot " + p.Parameter.Value)
+	s.Client = xray.Client(s.Client)
+
+	return s, nil
 }

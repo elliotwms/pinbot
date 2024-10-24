@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/bwmarrin/discordgo"
 	"github.com/elliotwms/pinbot/internal/endpoint"
 	"github.com/stretchr/testify/assert"
@@ -71,7 +72,9 @@ func (s *PingStage) a_ping_is_sent() *PingStage {
 		}
 	}
 
-	s.res, err = s.handler(context.Background(), req)
+	ctx, _ := xray.BeginSegment(context.Background(), "test")
+
+	s.res, err = s.handler(ctx, req)
 	s.require.NoError(err)
 
 	return s

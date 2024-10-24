@@ -1,6 +1,7 @@
 package commandhandlers
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"time"
@@ -14,7 +15,7 @@ const (
 	pinMessageColor = 0xbb0303
 )
 
-func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) (err error) {
+func PinMessageCommandHandler(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) (err error) {
 	m := data.Resolved.Messages[data.TargetID]
 	m.GuildID = i.GuildID // guildID is missing from message in resolved context
 
@@ -29,7 +30,7 @@ func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCrea
 	group := errgroup.Group{}
 	group.Go(func() error {
 		var err error
-		pinned, err = isAlreadyPinned(s, i, m)
+		pinned, err = isAlreadyPinned(ctx, s, i, m)
 		if err != nil {
 			log.Error("Could not check if message is already pinned", "error", err)
 		}
@@ -37,7 +38,7 @@ func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCrea
 	})
 	group.Go(func() error {
 		var err error
-		channels, err = s.GuildChannels(i.GuildID)
+		channels, err = s.GuildChannels(i.GuildID, discordgo.WithContext(ctx))
 		if err != nil {
 			log.Error("Could not get guild channels", "error", err)
 		}
@@ -45,24 +46,24 @@ func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCrea
 	})
 
 	if err := group.Wait(); err != nil {
-		return respond(s, i.Interaction, "💩 Temporary error, please retry")
+		return respond(ctx, s, i.Interaction, "💩 Temporary error, please retry")
 	}
 
 	if pinned {
-		return respond(s, i.Interaction, "🔄 Message already pinned")
+		return respond(ctx, s, i.Interaction, "🔄 Message already pinned")
 	}
 
 	sourceChannel, err := getSourceChannel(channels, m.ChannelID)
 	if err != nil {
 		log.Error("Could not determine source channel", "error", err)
-		return respond(s, i.Interaction, "💩 Temporary error, please retry")
+		return respond(ctx, s, i.Interaction, "💩 Temporary error, please retry")
 	}
 
 	// determine the target pin channel for the message
 	targetChannel, err := getTargetChannel(channels, sourceChannel)
 	if err != nil {
 		log.Error("Could not determine target channel", "error", err)
-		return respond(s, i.Interaction, "💩 Temporary error, please retry")
+		return respond(ctx, s, i.Interaction, "💩 Temporary error, please retry")
 	}
 	log = log.With("target_channel_id", targetChannel.ID)
 
@@ -71,20 +72,20 @@ func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCrea
 
 	// send the pin message
 	log.Debug("Sending pin message")
-	pin, err := s.ChannelMessageSendComplex(targetChannel.ID, pinMessage)
+	pin, err := s.ChannelMessageSendComplex(targetChannel.ID, pinMessage, discordgo.WithContext(ctx))
 	if err != nil {
 		log.Error("Could not send pin message", "error", err)
-		return respond(s, i.Interaction, "🙅 Could not send pin message. Please ensure bot has permission to post in "+targetChannel.Mention())
+		return respond(ctx, s, i.Interaction, "🙅 Could not send pin message. Please ensure bot has permission to post in "+targetChannel.Mention())
 	}
 
 	// mark the message as done
-	if err := s.MessageReactionAdd(m.ChannelID, m.ID, emojiPinned); err != nil {
+	if err := s.MessageReactionAdd(m.ChannelID, m.ID, emojiPinned, discordgo.WithContext(ctx)); err != nil {
 		log.Error("Could not react to message", "error", err)
 	}
 
 	log.Info("Pinned message", "pin_message_id", pin.ID)
 
-	return respond(s, i.Interaction, "📌 Pinned: "+url(i.GuildID, pin.ChannelID, pin.ID))
+	return respond(ctx, s, i.Interaction, "📌 Pinned: "+url(i.GuildID, pin.ChannelID, pin.ID))
 }
 
 func getSourceChannel(channels []*discordgo.Channel, id string) (*discordgo.Channel, error) {
@@ -97,10 +98,10 @@ func getSourceChannel(channels []*discordgo.Channel, id string) (*discordgo.Chan
 	return nil, fmt.Errorf("could not find channel with id %s", id)
 }
 
-func respond(s *discordgo.Session, i *discordgo.Interaction, c string) error {
+func respond(ctx context.Context, s *discordgo.Session, i *discordgo.Interaction, c string) error {
 	_, err := s.InteractionResponseEdit(i, &discordgo.WebhookEdit{
 		Content: &c,
-	})
+	}, discordgo.WithContext(ctx))
 
 	return err
 }
@@ -178,8 +179,8 @@ func buildPinMessage(sourceChannel *discordgo.Channel, m *discordgo.Message, pin
 	return pinMessage
 }
 
-func isAlreadyPinned(s *discordgo.Session, i *discordgo.InteractionCreate, m *discordgo.Message) (bool, error) {
-	acks, err := s.MessageReactions(m.ChannelID, m.ID, emojiPinned, 0, "", "")
+func isAlreadyPinned(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, m *discordgo.Message) (bool, error) {
+	acks, err := s.MessageReactions(m.ChannelID, m.ID, emojiPinned, 0, "", "", discordgo.WithContext(ctx))
 	if err != nil {
 		return false, err
 	}
