@@ -271,17 +271,6 @@ func (s *PinStage) the_pin_message_should_have_n_embeds(n int) *PinStage {
 	return s
 }
 
-func (s *PinStage) the_import_is_cleaned_up() *PinStage {
-	s.a_pin_message_should_be_posted_in_the_last_channel()
-
-	s.require.NoError(s.session.ChannelMessageDelete(s.pinMessage.ChannelID, s.pinMessage.ID))
-	s.messages = []*discordgo.Message{}
-
-	s.require.NoError(s.session.MessageReactionsRemoveAll(s.message.ChannelID, s.message.ID))
-
-	return s
-}
-
 func (s *PinStage) the_message_has_a_link() *PinStage {
 	s.sendMessage.Content = s.sendMessage.Content + " https://github.com/elliotwms/pinbot"
 
