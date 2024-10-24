@@ -20,7 +20,7 @@ func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCrea
 
 	log := slog.With("guild_id", i.GuildID, "channel_id", i.ChannelID, "message_id", m.ID)
 
-	log.Debug("Pinning message")
+	log.Debug("Starting pin message")
 
 	// API operations are slow, so fanout and execute concurrently
 	var pinned bool
@@ -70,7 +70,7 @@ func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCrea
 	pinMessage := buildPinMessage(sourceChannel, m, i.Member.User)
 
 	// send the pin message
-	log.Debug("Pinning message")
+	log.Debug("Sending pin message")
 	pin, err := s.ChannelMessageSendComplex(targetChannel.ID, pinMessage)
 	if err != nil {
 		log.Error("Could not send pin message", "error", err)
