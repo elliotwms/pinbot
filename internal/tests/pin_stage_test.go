@@ -2,19 +2,18 @@ package tests
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/bwmarrin/discordgo"
-	"github.com/bwmarrin/snowflake"
+	"github.com/elliotwms/bot"
 	"github.com/elliotwms/pinbot/internal/commandhandlers"
-	"github.com/elliotwms/pinbot/internal/endpoint"
+	"github.com/elliotwms/pinbot/internal/config"
+	"github.com/elliotwms/pinbot/internal/eventhandlers"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,34 +24,40 @@ type PinStage struct {
 	require *require.Assertions
 	assert  *assert.Assertions
 
-	handler func(_ context.Context, event *events.LambdaFunctionURLRequest) (*events.LambdaFunctionURLResponse, error)
-	res     *events.LambdaFunctionURLResponse
-	err     error
+	log     *logrus.Logger
+	logHook *test.Hook
 
 	sendMessage         *discordgo.MessageSend
 	channel             *discordgo.Channel
 	expectedPinsChannel *discordgo.Channel
-
-	message     *discordgo.Message
-	messages    []*discordgo.Message
-	pinMessage  *discordgo.Message
-	snowflake   *snowflake.Node
-	interaction *discordgo.Interaction
-	command     *discordgo.ApplicationCommand
+	message             *discordgo.Message
+	messages            []*discordgo.Message
+	pinMessage          *discordgo.Message
 }
 
 func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
-	node, _ := snowflake.NewNode(0)
-	s := &PinStage{
-		t:         t,
-		session:   session,
-		require:   require.New(t),
-		assert:    assert.New(t),
-		handler:   endpoint.New([]byte{}).WithSession(session).WithApplicationCommand("Pin", commandhandlers.PinMessageCommandHandler).Handle,
-		snowflake: node,
+	if os.Getenv("TEST_DEBUG") != "" {
+		log.SetLevel(logrus.DebugLevel)
 	}
 
-	_, cancel := context.WithCancel(context.Background())
+	s := &PinStage{
+		t:       t,
+		log:     log,
+		session: session,
+		require: require.New(t),
+		assert:  assert.New(t),
+		logHook: test.NewLocal(log),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	b := bot.
+		New(config.ApplicationID, session, log).
+		WithHandlers(eventhandlers.List(logrus.NewEntry(s.log)))
+
+	go func() {
+		s.require.NoError(b.Run(ctx))
+	}()
 
 	t.Cleanup(cancel)
 
@@ -104,59 +109,9 @@ func (s *PinStage) the_message_is_posted() *PinStage {
 	return s
 }
 
-func (s *PinStage) the_pin_command_is_sent_for_the_message() *PinStage {
-	i := &discordgo.InteractionCreate{
-		Interaction: &discordgo.Interaction{
-			ID:    s.snowflake.Generate().String(),
-			AppID: testAppID,
-			Type:  discordgo.InteractionApplicationCommand,
-			Data: discordgo.ApplicationCommandInteractionData{
-				ID:          s.snowflake.Generate().String(), // todo command ID
-				Name:        "Pin",
-				CommandType: discordgo.MessageApplicationCommand,
-				TargetID:    s.message.ID,
-				Resolved: &discordgo.ApplicationCommandInteractionDataResolved{
-					Messages: map[string]*discordgo.Message{
-						s.message.ID: s.message,
-					},
-				},
-			},
-			GuildID:        testGuildID,
-			ChannelID:      s.message.ChannelID,
-			AppPermissions: 0,
-			Member: &discordgo.Member{
-				User: &discordgo.User{
-					ID: s.snowflake.Generate().String(),
-				},
-			},
-			Version: 1,
-		},
-	}
-
-	return s.sendInteraction(i)
-}
-
-func (s *PinStage) sendInteraction(i *discordgo.InteractionCreate) *PinStage {
-	// create the interaction in fakediscord
-	i, err := fakediscord.Interaction(i)
+func (s *PinStage) the_message_is_reacted_to_with(emoji string) *PinStage {
+	err := s.session.MessageReactionAdd(s.message.ChannelID, s.message.ID, emoji)
 	s.require.NoError(err)
-
-	s.interaction = i.Interaction
-
-	bs, err := json.Marshal(i)
-	s.require.NoError(err)
-
-	ctx, _ := xray.BeginSegment(context.Background(), "test")
-
-	s.res, s.err = s.handler(ctx, &events.LambdaFunctionURLRequest{
-		RequestContext:  events.LambdaFunctionURLRequestContext{},
-		Body:            string(bs),
-		IsBase64Encoded: false,
-	})
-
-	s.require.NoError(s.err)
-	s.require.Equal(http.StatusAccepted, s.res.StatusCode)
-	s.require.Empty(s.res.Body)
 
 	return s
 }
@@ -210,20 +165,36 @@ func (s *PinStage) handleMessageFor(channelID string) func(*discordgo.Session, *
 }
 
 func (s *PinStage) the_message_is_already_marked_as_pinned() {
-	s.require.NoError(s.session.MessageReactionAdd(s.message.ChannelID, s.message.ID, "📌"))
+	s.require.NoError(s.session.MessageReactionAdd(s.message.ChannelID, s.message.ID, "👀"))
+	s.require.NoError(s.session.MessageReactionAdd(s.message.ChannelID, s.message.ID, "✅"))
 }
 
-func (s *PinStage) the_bot_should_respond_with_message_containing(m string) *PinStage {
-	s.require.Eventually(func() bool {
-		res, err := s.session.InteractionResponse(s.interaction)
-		if err != nil {
-			return false
-		}
+func (s *PinStage) the_bot_should_log_the_message_as_already_pinned() *PinStage {
+	return s.the_bot_should_log("Message already pinned")
+}
 
-		return strings.Contains(res.Content, m)
-	}, 5*time.Second, 100*time.Millisecond)
+func (s *PinStage) self_pin_is_disabled() *PinStage {
+	c := config.SelfPinEnabled
+	config.SelfPinEnabled = false
+
+	s.t.Cleanup(func() {
+		config.SelfPinEnabled = c
+	})
 
 	return s
+}
+
+func (s *PinStage) the_message_is_pinned() *PinStage {
+	s.require.NoError(s.session.ChannelMessagePin(s.channel.ID, s.message.ID))
+
+	return s
+}
+
+func (s *PinStage) an_import_is_triggered() {
+	commandhandlers.ImportChannelCommandHandler(&commandhandlers.ImportChannelCommand{
+		GuildID:   testGuildID,
+		ChannelID: s.channel.ID,
+	}, s.session, s.log.WithField("test", true))
 }
 
 func (s *PinStage) an_attachment(filename, contentType string) *PinStage {
@@ -271,6 +242,42 @@ func (s *PinStage) the_pin_message_should_have_n_embeds(n int) *PinStage {
 	return s
 }
 
+func (s *PinStage) the_import_is_cleaned_up() *PinStage {
+	s.a_pin_message_should_be_posted_in_the_last_channel()
+
+	s.require.NoError(s.session.ChannelMessageDelete(s.pinMessage.ChannelID, s.pinMessage.ID))
+	s.messages = []*discordgo.Message{}
+
+	s.require.NoError(s.session.MessageReactionsRemoveAll(s.message.ChannelID, s.message.ID))
+
+	return s
+}
+
+func (s *PinStage) the_channel_is_excluded() *PinStage {
+	config.ExcludedChannels = append(config.ExcludedChannels, s.channel.ID)
+	return s
+}
+
+func (s *PinStage) the_bot_should_log(log string) *PinStage {
+	s.require.Eventually(func() bool {
+		for _, e := range s.logHook.AllEntries() {
+			if e.Message == log {
+				return true
+			}
+		}
+
+		return false
+	}, 5*time.Second, 10*time.Millisecond)
+
+	return s
+}
+
+func (s *PinStage) the_bot_should_react_with_successful_emoji() *PinStage {
+	return s.
+		the_bot_should_add_the_emoji("👀").and().
+		the_bot_should_add_the_emoji("✅")
+}
+
 func (s *PinStage) the_message_has_a_link() *PinStage {
 	s.sendMessage.Content = s.sendMessage.Content + " https://github.com/elliotwms/pinbot"
 
@@ -297,42 +304,4 @@ func (s *PinStage) the_message_has_n_attachments(n int) {
 
 		return len(m.Attachments) == n
 	}, 5*time.Second, 500*time.Millisecond)
-}
-
-func (s *PinStage) the_bot_should_successfully_acknowledge_the_pin() *PinStage {
-	return s.
-		the_bot_should_add_the_emoji("📌").and().
-		the_bot_should_respond_with_message_containing("📌 Pinned")
-}
-
-func (s *PinStage) a_stale_command() *PinStage {
-	var err error
-	s.command, err = session.ApplicationCommandCreate(testAppID, testGuildID, &discordgo.ApplicationCommand{
-		Name: "import",
-		Type: discordgo.ChatApplicationCommand,
-	})
-	s.require.NoError(err)
-
-	return s
-}
-
-func (s *PinStage) the_stale_command_is_triggered() {
-	s.sendInteraction(&discordgo.InteractionCreate{
-		Interaction: &discordgo.Interaction{
-			Type:    discordgo.InteractionApplicationCommand,
-			GuildID: testGuildID,
-			Data: &discordgo.ApplicationCommandInteractionData{
-				Name: "import",
-				ID:   s.command.ID,
-			},
-		},
-	})
-}
-
-func (s *PinStage) the_stale_command_should_be_deleted() {
-	s.require.Eventually(func() bool {
-		_, err := session.ApplicationCommand(testAppID, testGuildID, s.command.ID)
-
-		return err != nil
-	}, time.Second, 50*time.Millisecond)
 }

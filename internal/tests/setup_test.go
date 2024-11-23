@@ -1,26 +1,39 @@
 package tests
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
 	"github.com/bwmarrin/discordgo"
-	pkgfakediscord "github.com/elliotwms/fakediscord/pkg/fakediscord"
+	"github.com/elliotwms/fakediscord/pkg/fakediscord"
+	"github.com/elliotwms/pinbot/internal/config"
+	"github.com/sirupsen/logrus"
 )
 
 const testGuildName = "Pinbot Integration Testing"
-const testAppID = "1290742494824366183"
-const testToken = "bot"
 
 var (
 	session     *discordgo.Session
 	testGuildID string
-	fakediscord *pkgfakediscord.Client
 )
 
+var log = logrus.New()
+
 func TestMain(m *testing.M) {
-	pkgfakediscord.Configure("http://localhost:8080/")
-	fakediscord = pkgfakediscord.NewClient(testToken)
+	fakediscord.Configure("http://localhost:8080/")
+
+	_ = os.Setenv("TOKEN", "token")
+	_ = os.Setenv("APPLICATION_ID", "appid")
+
+	config.Configure()
+	// enable testing with a single bot by allowing self-pins
+	config.SelfPinEnabled = true
+
+	// add additional testing permissions
+	config.Permissions = config.DefaultPermissions |
+		discordgo.PermissionManageChannels |
+		discordgo.PermissionManageMessages
 
 	openSession()
 
@@ -33,7 +46,7 @@ func TestMain(m *testing.M) {
 
 func openSession() {
 	var err error
-	session, err = discordgo.New("Bot " + testToken)
+	session, err = discordgo.New(fmt.Sprintf("Bot %s", config.Token))
 	if err != nil {
 		panic(err)
 	}
@@ -43,11 +56,8 @@ func openSession() {
 		session.Debug = true
 	}
 
-	session.Identify.Intents = discordgo.IntentsGuilds |
-		discordgo.IntentsGuildMessages |
-		discordgo.IntentsGuildMessageReactions
+	session.Identify.Intents = config.Intents
 
-	// session is used for asserting on events from fakediscord
 	if err := session.Open(); err != nil {
 		panic(err)
 	}
