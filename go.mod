@@ -8,7 +8,7 @@ require (
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/elliotwms/fakediscord v0.16.4
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/winebarrel/secretlamb v0.3.0
 	golang.org/x/sync v0.9.0
 )
