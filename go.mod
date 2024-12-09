@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-xray-sdk-go v1.8.5
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/bwmarrin/snowflake v0.3.0
-	github.com/elliotwms/fakediscord v0.16.6
+	github.com/elliotwms/fakediscord v0.16.7
 	github.com/stretchr/testify v1.10.0
 	github.com/winebarrel/secretlamb v0.3.0
 	golang.org/x/sync v0.9.0
