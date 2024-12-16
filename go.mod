@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-xray-sdk-go v1.8.5
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/bwmarrin/snowflake v0.3.0
-	github.com/elliotwms/fakediscord v0.16.7
+	github.com/elliotwms/fakediscord v0.16.8
 	github.com/stretchr/testify v1.10.0
 	github.com/winebarrel/secretlamb v0.3.0
 	golang.org/x/sync v0.10.0
@@ -26,10 +26,10 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.52.0 // indirect
-	golang.org/x/crypto v0.28.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/net v0.26.0 // indirect
-	golang.org/x/sys v0.26.0 // indirect
-	golang.org/x/text v0.19.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
 	google.golang.org/grpc v1.64.1 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
