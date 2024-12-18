@@ -8,24 +8,25 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/bwmarrin/snowflake"
 	"github.com/elliotwms/bot"
-	"github.com/elliotwms/pinbot/internal/commandhandlers"
+	"github.com/elliotwms/fakediscord/pkg/fakediscord"
 	"github.com/elliotwms/pinbot/internal/config"
 	"github.com/elliotwms/pinbot/internal/eventhandlers"
 	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type PinStage struct {
-	t       *testing.T
-	session *discordgo.Session
-	require *require.Assertions
-	assert  *assert.Assertions
+	t           *testing.T
+	session     *discordgo.Session
+	require     *require.Assertions
+	assert      *assert.Assertions
+	snowflake   *snowflake.Node
+	fakediscord *fakediscord.Client
 
-	log     *logrus.Logger
-	logHook *test.Hook
+	interaction *discordgo.InteractionCreate
 
 	sendMessage         *discordgo.MessageSend
 	channel             *discordgo.Channel
@@ -40,20 +41,22 @@ func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
 		log.SetLevel(logrus.DebugLevel)
 	}
 
+	node, _ := snowflake.NewNode(0)
+
 	s := &PinStage{
-		t:       t,
-		log:     log,
-		session: session,
-		require: require.New(t),
-		assert:  assert.New(t),
-		logHook: test.NewLocal(log),
+		t:           t,
+		session:     session,
+		require:     require.New(t),
+		assert:      assert.New(t),
+		snowflake:   node,
+		fakediscord: fakediscord.NewClient(session.Token),
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	b := bot.
 		New(config.ApplicationID, session, log).
-		WithHandlers(eventhandlers.List(logrus.NewEntry(s.log)))
+		WithHandlers(eventhandlers.List(logrus.NewEntry(log)))
 
 	go func() {
 		s.require.NoError(b.Run(ctx))
@@ -165,36 +168,13 @@ func (s *PinStage) handleMessageFor(channelID string) func(*discordgo.Session, *
 }
 
 func (s *PinStage) the_message_is_already_marked_as_pinned() {
-	s.require.NoError(s.session.MessageReactionAdd(s.message.ChannelID, s.message.ID, "👀"))
-	s.require.NoError(s.session.MessageReactionAdd(s.message.ChannelID, s.message.ID, "✅"))
-}
-
-func (s *PinStage) the_bot_should_log_the_message_as_already_pinned() *PinStage {
-	return s.the_bot_should_log("Message already pinned")
-}
-
-func (s *PinStage) self_pin_is_disabled() *PinStage {
-	c := config.SelfPinEnabled
-	config.SelfPinEnabled = false
-
-	s.t.Cleanup(func() {
-		config.SelfPinEnabled = c
-	})
-
-	return s
+	s.require.NoError(s.session.MessageReactionAdd(s.message.ChannelID, s.message.ID, "📌"))
 }
 
 func (s *PinStage) the_message_is_pinned() *PinStage {
 	s.require.NoError(s.session.ChannelMessagePin(s.channel.ID, s.message.ID))
 
 	return s
-}
-
-func (s *PinStage) an_import_is_triggered() {
-	commandhandlers.ImportChannelCommandHandler(&commandhandlers.ImportChannelCommand{
-		GuildID:   testGuildID,
-		ChannelID: s.channel.ID,
-	}, s.session, s.log.WithField("test", true))
 }
 
 func (s *PinStage) an_attachment(filename, contentType string) *PinStage {
@@ -253,29 +233,10 @@ func (s *PinStage) the_import_is_cleaned_up() *PinStage {
 	return s
 }
 
-func (s *PinStage) the_channel_is_excluded() *PinStage {
-	config.ExcludedChannels = append(config.ExcludedChannels, s.channel.ID)
-	return s
-}
-
-func (s *PinStage) the_bot_should_log(log string) *PinStage {
-	s.require.Eventually(func() bool {
-		for _, e := range s.logHook.AllEntries() {
-			if e.Message == log {
-				return true
-			}
-		}
-
-		return false
-	}, 5*time.Second, 10*time.Millisecond)
-
-	return s
-}
-
-func (s *PinStage) the_bot_should_react_with_successful_emoji() *PinStage {
+func (s *PinStage) the_bot_should_acknowledge_the_pin() *PinStage {
 	return s.
-		the_bot_should_add_the_emoji("👀").and().
-		the_bot_should_add_the_emoji("✅")
+		the_bot_should_add_the_emoji("📌").and().
+		the_bot_should_respond_with_message_containing("📌 Pinned")
 }
 
 func (s *PinStage) the_message_has_a_link() *PinStage {
@@ -304,4 +265,55 @@ func (s *PinStage) the_message_has_n_attachments(n int) {
 
 		return len(m.Attachments) == n
 	}, 5*time.Second, 500*time.Millisecond)
+}
+
+func (s *PinStage) a_pin_interaction_is_created() *PinStage {
+	i := &discordgo.InteractionCreate{
+		Interaction: &discordgo.Interaction{
+			ID:    s.snowflake.Generate().String(),
+			AppID: s.session.State.User.ID,
+			Type:  discordgo.InteractionApplicationCommand,
+			Data: discordgo.ApplicationCommandInteractionData{
+				ID:          s.snowflake.Generate().String(), // todo command ID?
+				Name:        "Pin",
+				CommandType: discordgo.MessageApplicationCommand,
+				TargetID:    s.message.ID,
+				Resolved: &discordgo.ApplicationCommandInteractionDataResolved{
+					Messages: map[string]*discordgo.Message{
+						s.message.ID: s.message,
+					},
+				},
+			},
+			GuildID:        testGuildID,
+			ChannelID:      s.message.ChannelID,
+			AppPermissions: 0,
+			Member: &discordgo.Member{
+				User: &discordgo.User{
+					ID: s.snowflake.Generate().String(),
+				},
+			},
+			Version: 1,
+		},
+	}
+
+	var err error
+	s.interaction, err = s.fakediscord.Interaction(i)
+
+	s.require.NoError(err)
+	s.require.NotEmpty(s.interaction)
+
+	return s
+}
+
+func (s *PinStage) the_bot_should_respond_with_message_containing(m string) *PinStage {
+	s.require.Eventually(func() bool {
+		res, err := s.session.InteractionResponse(s.interaction.Interaction)
+		if err != nil {
+			return false
+		}
+
+		return strings.Contains(res.Content, m)
+	}, 5*time.Second, 100*time.Millisecond)
+
+	return s
 }

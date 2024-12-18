@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/bwmarrin/discordgo"
@@ -22,14 +21,12 @@ const DefaultPermissions = discordgo.PermissionViewChannel |
 	discordgo.PermissionAddReactions
 
 var (
-	Token            string
-	ApplicationID    string
-	HealthCheckAddr  string
-	LogLevel         logrus.Level
-	SelfPinEnabled   bool
-	ExcludedChannels []string
-	Intents          discordgo.Intent
-	Permissions      int
+	Token           string
+	ApplicationID   string
+	HealthCheckAddr string
+	LogLevel        logrus.Level
+	Intents         discordgo.Intent
+	Permissions     int
 )
 
 var once sync.Once
@@ -38,12 +35,7 @@ func Configure() {
 	once.Do(func() {
 		Token = mustGetEnv("TOKEN")
 		ApplicationID = mustGetEnv("APPLICATION_ID")
-		SelfPinEnabled = strings.ToLower(os.Getenv("SELF_PIN_ENABLED")) == "true"
 		HealthCheckAddr = os.Getenv("HEALTH_CHECK_ADDR")
-
-		if s, ok := os.LookupEnv("EXCLUDED_CHANNELS"); ok && s != "" {
-			ExcludedChannels = strings.Split(s, ",")
-		}
 
 		l, err := logrus.ParseLevel(os.Getenv("LOG_LEVEL"))
 		if err != nil {
@@ -73,8 +65,6 @@ func Output(showSensitive bool) logrus.Fields {
 		"APPLICATION_ID":    ApplicationID,
 		"HEALTH_CHECK_ADDR": HealthCheckAddr,
 		"LOG_LEVEL":         LogLevel,
-		"SELF_PIN_ENABLED":  SelfPinEnabled,
-		"EXCLUDED_CHANNELS": ExcludedChannels,
 		"INTENTS":           Intents,
 		"PERMISSIONS":       Permissions,
 		"install_url":       BuildInstallURL().String(),
@@ -94,16 +84,6 @@ func mustGetEnv(s string) string {
 		panic(fmt.Sprintf("Missing '%s'", s))
 	}
 	return token
-}
-
-func IsExcludedChannel(id string) bool {
-	for _, c := range ExcludedChannels {
-		if c == id {
-			return true
-		}
-	}
-
-	return false
 }
 
 func BuildInstallURL() *url.URL {

@@ -27,8 +27,6 @@ func TestMain(m *testing.M) {
 	_ = os.Setenv("APPLICATION_ID", "appid")
 
 	config.Configure()
-	// enable testing with a single bot by allowing self-pins
-	config.SelfPinEnabled = true
 
 	// add additional testing permissions
 	config.Permissions = config.DefaultPermissions |

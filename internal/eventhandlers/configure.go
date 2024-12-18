@@ -8,9 +8,6 @@ const logFieldHandler = "handler"
 func List(l *logrus.Entry) []interface{} {
 	return []interface{}{
 		Ready(l.WithField(logFieldHandler, "Ready")),
-		MessageReactionAdd(l.WithField(logFieldHandler, "MessageReactionAdd")),
-		GuildCreate(l.WithField(logFieldHandler, "GuildCreate")),
 		InteractionCreate(l.WithField(logFieldHandler, "InteractionCreate")),
-		ChannelPinsUpdate(l.WithField(logFieldHandler, "ChannelPinsUpdate")),
 	}
 }
