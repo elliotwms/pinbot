@@ -112,13 +112,6 @@ func (s *PinStage) the_message_is_posted() *PinStage {
 	return s
 }
 
-func (s *PinStage) the_message_is_reacted_to_with(emoji string) *PinStage {
-	err := s.session.MessageReactionAdd(s.message.ChannelID, s.message.ID, emoji)
-	s.require.NoError(err)
-
-	return s
-}
-
 func (s *PinStage) a_pin_message_should_be_posted_in_the_last_channel() *PinStage {
 	s.require.Eventually(func() bool {
 		for _, m := range s.messages {
@@ -171,12 +164,6 @@ func (s *PinStage) the_message_is_already_marked_as_pinned() {
 	s.require.NoError(s.session.MessageReactionAdd(s.message.ChannelID, s.message.ID, "📌"))
 }
 
-func (s *PinStage) the_message_is_pinned() *PinStage {
-	s.require.NoError(s.session.ChannelMessagePin(s.channel.ID, s.message.ID))
-
-	return s
-}
-
 func (s *PinStage) an_attachment(filename, contentType string) *PinStage {
 	f, err := os.Open("files/" + filename)
 	s.require.NoError(err)
@@ -218,17 +205,6 @@ func (s *PinStage) the_pin_message_should_have_n_embeds_with_image_url(n int) {
 
 func (s *PinStage) the_pin_message_should_have_n_embeds(n int) *PinStage {
 	s.require.Len(s.pinMessage.Embeds, n)
-
-	return s
-}
-
-func (s *PinStage) the_import_is_cleaned_up() *PinStage {
-	s.a_pin_message_should_be_posted_in_the_last_channel()
-
-	s.require.NoError(s.session.ChannelMessageDelete(s.pinMessage.ChannelID, s.pinMessage.ID))
-	s.messages = []*discordgo.Message{}
-
-	s.require.NoError(s.session.MessageReactionsRemoveAll(s.message.ChannelID, s.message.ID))
 
 	return s
 }
