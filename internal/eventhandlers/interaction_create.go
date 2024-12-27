@@ -32,5 +32,9 @@ func InteractionCreate(log *logrus.Entry) func(s *discordgo.Session, e *discordg
 		case commands.Pin.Name:
 			err = commandhandlers.PinMessageCommandHandler(context.Background(), s, e, command)
 		}
+
+		if err != nil {
+			log.WithError(err).Error("Failed to handle interaction")
+		}
 	}
 }
