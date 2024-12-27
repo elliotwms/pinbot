@@ -26,9 +26,12 @@ func Ready(log *logrus.Entry) func(s *discordgo.Session, _ *discordgo.Ready) {
 
 		for _, c := range cs {
 			if c.Name == commands.Pin.Name && c.Type == commands.Pin.Type {
+				log.Info("Pin command already exists")
 				return
 			}
 		}
+
+		log.Info("Creating Pin command")
 		_, err = s.ApplicationCommandCreate(config.ApplicationID, "", commands.Pin)
 		if err != nil {
 			log.WithError(err).Error("Could not create command")
