@@ -2,12 +2,12 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"sync"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/sirupsen/logrus"
 )
 
 const DefaultIntents = discordgo.IntentsGuilds |
@@ -18,7 +18,7 @@ var (
 	Token           string
 	ApplicationID   string
 	HealthCheckAddr string
-	LogLevel        logrus.Level
+	LogLevel        slog.Level
 	Intents         discordgo.Intent
 )
 
@@ -30,11 +30,14 @@ func Configure() {
 		ApplicationID = mustGetEnv("APPLICATION_ID")
 		HealthCheckAddr = os.Getenv("HEALTH_CHECK_ADDR")
 
-		l, err := logrus.ParseLevel(os.Getenv("LOG_LEVEL"))
-		if err != nil {
-			LogLevel = logrus.InfoLevel
+		level := os.Getenv("LOG_LEVEL")
+		if level == "" {
+			LogLevel = slog.LevelInfo
 		} else {
-			LogLevel = l
+			err := LogLevel.UnmarshalText([]byte(level))
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		Intents = DefaultIntents

@@ -11,11 +11,9 @@ import (
 	"github.com/bwmarrin/snowflake"
 	"github.com/elliotwms/bot"
 	"github.com/elliotwms/fakediscord/pkg/fakediscord"
-	"github.com/elliotwms/pinbot/internal/commandhandlers"
 	"github.com/elliotwms/pinbot/internal/commands"
 	"github.com/elliotwms/pinbot/internal/config"
 	"github.com/elliotwms/pinbot/internal/eventhandlers"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,10 +37,6 @@ type PinStage struct {
 }
 
 func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
-	if os.Getenv("TEST_DEBUG") != "" {
-		log.SetLevel(logrus.DebugLevel)
-	}
-
 	s := &PinStage{
 		t:           t,
 		session:     session,
@@ -57,8 +51,8 @@ func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
 	b := bot.
 		New(config.ApplicationID, session).
 		WithIntents(config.DefaultIntents).
-		WithHandlers(eventhandlers.List(logrus.NewEntry(log))).
-		WithApplicationCommand(commands.Pin, commandhandlers.PinMessageCommandHandler)
+		WithHandler(eventhandlers.Ready).
+		WithApplicationCommand(commands.Pin, commands.PinMessageCommandHandler)
 
 	go func() {
 		s.require.NoError(b.Build().Run(ctx))

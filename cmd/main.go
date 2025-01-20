@@ -2,40 +2,40 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/elliotwms/bot"
-	"github.com/elliotwms/pinbot/internal/commandhandlers"
 	"github.com/elliotwms/pinbot/internal/commands"
 	"github.com/elliotwms/pinbot/internal/config"
 	"github.com/elliotwms/pinbot/internal/eventhandlers"
-	"github.com/sirupsen/logrus"
 )
-
-var log = logrus.New()
 
 func main() {
 	config.Configure()
-	log.SetLevel(config.LogLevel)
+
+	slog.SetLogLoggerLevel(config.LogLevel)
 
 	s, err := discordgo.New("Bot " + config.Token)
 	if err != nil {
 		panic(err)
 	}
 
-	if log.IsLevelEnabled(logrus.TraceLevel) {
+	// set the discord log level
+	if config.LogLevel == slog.LevelDebug {
 		s.LogLevel = discordgo.LogDebug
 	}
 
 	b := bot.
 		New(config.ApplicationID, s).
+		WithLogger(slog.Default()).
 		WithIntents(config.Intents).
-		WithHandlers(eventhandlers.List(logrus.NewEntry(log))).
+		WithHandler(eventhandlers.Ready).
 		WithMigrationEnabled(true).
-		WithApplicationCommand(commands.Pin, commandhandlers.PinMessageCommandHandler)
+		WithApplicationCommand(commands.Pin, commands.PinMessageCommandHandler)
 
 	if config.HealthCheckAddr != "" {
 		b.WithHealthCheck(config.HealthCheckAddr)

@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"testing"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/bwmarrin/snowflake"
 	"github.com/elliotwms/fakediscord/pkg/fakediscord"
 	"github.com/elliotwms/pinbot/internal/config"
-	"github.com/sirupsen/logrus"
 )
 
 const testGuildName = "Pinbot Integration Testing"
@@ -18,8 +18,6 @@ var (
 	session     *discordgo.Session
 	testGuildID string
 )
-
-var log = logrus.New()
 
 var node *snowflake.Node
 
@@ -30,7 +28,7 @@ func TestMain(m *testing.M) {
 	_ = os.Setenv("APPLICATION_ID", "appid")
 
 	if os.Getenv("TEST_DEBUG") != "" {
-		log.SetLevel(logrus.DebugLevel)
+		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 
 	node, _ = snowflake.NewNode(0)
