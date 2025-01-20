@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/bwmarrin/snowflake"
 	"github.com/elliotwms/fakediscord/pkg/fakediscord"
 	"github.com/elliotwms/pinbot/internal/config"
 	"github.com/sirupsen/logrus"
@@ -20,18 +21,21 @@ var (
 
 var log = logrus.New()
 
+var node *snowflake.Node
+
 func TestMain(m *testing.M) {
 	fakediscord.Configure("http://localhost:8080/")
 
 	_ = os.Setenv("TOKEN", "token")
 	_ = os.Setenv("APPLICATION_ID", "appid")
 
-	config.Configure()
+	if os.Getenv("TEST_DEBUG") != "" {
+		log.SetLevel(logrus.DebugLevel)
+	}
 
-	// add additional testing permissions
-	config.Permissions = config.DefaultPermissions |
-		discordgo.PermissionManageChannels |
-		discordgo.PermissionManageMessages
+	node, _ = snowflake.NewNode(0)
+
+	config.Configure()
 
 	openSession()
 

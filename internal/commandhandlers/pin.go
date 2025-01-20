@@ -14,7 +14,9 @@ const (
 	pinMessageColor = 0xbb0303
 )
 
-func PinMessageCommandHandler(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) (err error) {
+func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) (err error) {
+	ctx := context.TODO()
+
 	m := data.Resolved.Messages[data.TargetID]
 	m.GuildID = i.GuildID // guildID is missing from message in resolved context
 

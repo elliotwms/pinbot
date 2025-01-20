@@ -8,6 +8,8 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/elliotwms/bot"
+	"github.com/elliotwms/pinbot/internal/commandhandlers"
+	"github.com/elliotwms/pinbot/internal/commands"
 	"github.com/elliotwms/pinbot/internal/config"
 	"github.com/elliotwms/pinbot/internal/eventhandlers"
 	"github.com/sirupsen/logrus"
@@ -29,9 +31,11 @@ func main() {
 	}
 
 	b := bot.
-		New(config.ApplicationID, s, log).
+		New(config.ApplicationID, s).
+		WithIntents(config.Intents).
 		WithHandlers(eventhandlers.List(logrus.NewEntry(log))).
-		WithConfigReporter(config.Output)
+		WithMigrationEnabled(true).
+		WithApplicationCommand(commands.Pin, commandhandlers.PinMessageCommandHandler)
 
 	if config.HealthCheckAddr != "" {
 		b.WithHealthCheck(config.HealthCheckAddr)
@@ -39,7 +43,7 @@ func main() {
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 
-	if err := b.Run(ctx); err != nil {
+	if err := b.Build().Run(ctx); err != nil {
 		os.Exit(1)
 	}
 }

@@ -8,6 +8,5 @@ const logFieldHandler = "handler"
 func List(l *logrus.Entry) []interface{} {
 	return []interface{}{
 		Ready(l.WithField(logFieldHandler, "Ready")),
-		InteractionCreate(l.WithField(logFieldHandler, "InteractionCreate")),
 	}
 }

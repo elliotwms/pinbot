@@ -11,6 +11,8 @@ import (
 	"github.com/bwmarrin/snowflake"
 	"github.com/elliotwms/bot"
 	"github.com/elliotwms/fakediscord/pkg/fakediscord"
+	"github.com/elliotwms/pinbot/internal/commandhandlers"
+	"github.com/elliotwms/pinbot/internal/commands"
 	"github.com/elliotwms/pinbot/internal/config"
 	"github.com/elliotwms/pinbot/internal/eventhandlers"
 	"github.com/sirupsen/logrus"
@@ -41,8 +43,6 @@ func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
 		log.SetLevel(logrus.DebugLevel)
 	}
 
-	node, _ := snowflake.NewNode(0)
-
 	s := &PinStage{
 		t:           t,
 		session:     session,
@@ -55,11 +55,13 @@ func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	b := bot.
-		New(config.ApplicationID, session, log).
-		WithHandlers(eventhandlers.List(logrus.NewEntry(log)))
+		New(config.ApplicationID, session).
+		WithIntents(config.DefaultIntents).
+		WithHandlers(eventhandlers.List(logrus.NewEntry(log))).
+		WithApplicationCommand(commands.Pin, commandhandlers.PinMessageCommandHandler)
 
 	go func() {
-		s.require.NoError(b.Run(ctx))
+		s.require.NoError(b.Build().Run(ctx))
 	}()
 
 	t.Cleanup(cancel)
