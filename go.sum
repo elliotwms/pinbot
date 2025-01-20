@@ -15,8 +15,8 @@ github.com/bwmarrin/snowflake v0.3.0/go.mod h1:NdZxfVWX+oR6y2K0o6qAYv6gIOP9rjG0/
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/elliotwms/fakediscord v0.16.8 h1:oRoNde+bJiiSEzmO6MilsG9xZo6da06m+cR3hut9V4s=
-github.com/elliotwms/fakediscord v0.16.8/go.mod h1:diPjfnMTjg73Izwl5pHMvGoGuOL8VSsMVt2ugFhfCos=
+github.com/elliotwms/fakediscord v0.18.2 h1:EN1JeyhMMPpZf+UnZMvROjhuzsAM+z4nw9bVseakcjo=
+github.com/elliotwms/fakediscord v0.18.2/go.mod h1:diPjfnMTjg73Izwl5pHMvGoGuOL8VSsMVt2ugFhfCos=
 github.com/fatih/color v1.16.0 h1:zmkK9Ngbjj+K0yRhTVONQh1p/HknKYSlNT+vZCzyokM=
 github.com/fatih/color v1.16.0/go.mod h1:fL2Sau1YI5c0pdGEVCbKQbLXB6edEj1ZgiY4NijnWvE=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
