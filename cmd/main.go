@@ -9,6 +9,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/elliotwms/bot"
+	"github.com/elliotwms/bot/interactions"
 	"github.com/elliotwms/pinbot/internal/commands"
 	"github.com/elliotwms/pinbot/internal/config"
 	"github.com/elliotwms/pinbot/internal/eventhandlers"
@@ -29,9 +30,15 @@ func main() {
 		s.LogLevel = discordgo.LogDebug
 	}
 
+	r := interactions.NewRouter(
+		interactions.WithDeferredResponse(true),
+		interactions.WithLogger(slog.Default()),
+	)
+
 	b := bot.
 		New(config.ApplicationID, s).
 		WithLogger(slog.Default()).
+		WithRouter(r).
 		WithIntents(config.Intents).
 		WithHandler(eventhandlers.Ready).
 		WithMigrationEnabled(true).
