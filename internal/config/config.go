@@ -18,6 +18,7 @@ var (
 	Token           string
 	ApplicationID   string
 	HealthCheckAddr string
+	GuildID         string
 	LogLevel        slog.Level
 	Intents         discordgo.Intent
 )
@@ -29,6 +30,7 @@ func Configure() {
 		Token = mustGetEnv("TOKEN")
 		ApplicationID = mustGetEnv("APPLICATION_ID")
 		HealthCheckAddr = os.Getenv("HEALTH_CHECK_ADDR")
+		GuildID = os.Getenv("GUILD_ID")
 
 		level := os.Getenv("LOG_LEVEL")
 		if level == "" {

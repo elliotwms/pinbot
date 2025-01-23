@@ -48,6 +48,10 @@ func main() {
 		b.WithHealthCheck(config.HealthCheckAddr)
 	}
 
+	if config.GuildID != "" {
+		b.WithGuildID(config.GuildID)
+	}
+
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 
 	if err := b.Build().Run(ctx); err != nil {
