@@ -9,11 +9,9 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/bwmarrin/snowflake"
-	"github.com/elliotwms/bot"
 	"github.com/elliotwms/fakediscord/pkg/fakediscord"
-	"github.com/elliotwms/pinbot/internal/commands"
-	"github.com/elliotwms/pinbot/internal/config"
-	"github.com/elliotwms/pinbot/internal/eventhandlers"
+	"github.com/elliotwms/pinbot/internal/pinbot"
+	"github.com/neilotoole/slogt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -48,17 +46,21 @@ func NewPinStage(t *testing.T) (*PinStage, *PinStage, *PinStage) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	b := bot.
-		New(config.ApplicationID, session).
-		WithIntents(config.DefaultIntents).
-		WithHandler(eventhandlers.Ready).
-		WithApplicationCommand(commands.Pin, commands.PinMessageCommandHandler)
+	c := pinbot.NewConfig(session, "appid")
+
+	c.Logger = slogt.New(t)
+
+	done := make(chan struct{})
 
 	go func() {
-		s.require.NoError(b.Build().Run(ctx))
+		s.require.NoError(pinbot.Run(c, ctx))
+		close(done)
 	}()
 
-	t.Cleanup(cancel)
+	t.Cleanup(func() {
+		cancel()
+		<-done
+	})
 
 	return s, s, s
 }

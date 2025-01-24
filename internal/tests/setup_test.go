@@ -9,7 +9,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/bwmarrin/snowflake"
 	"github.com/elliotwms/fakediscord/pkg/fakediscord"
-	"github.com/elliotwms/pinbot/internal/config"
 )
 
 const testGuildName = "Pinbot Integration Testing"
@@ -24,18 +23,13 @@ var node *snowflake.Node
 func TestMain(m *testing.M) {
 	fakediscord.Configure("http://localhost:8080/")
 
-	_ = os.Setenv("TOKEN", "token")
-	_ = os.Setenv("APPLICATION_ID", "appid")
-
 	if os.Getenv("TEST_DEBUG") != "" {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 
 	node, _ = snowflake.NewNode(0)
 
-	config.Configure()
-
-	openSession()
+	openSession("bot")
 
 	code := m.Run()
 
@@ -44,9 +38,9 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func openSession() {
+func openSession(token string) {
 	var err error
-	session, err = discordgo.New(fmt.Sprintf("Bot %s", config.Token))
+	session, err = discordgo.New(fmt.Sprintf("Bot %s", token))
 	if err != nil {
 		panic(err)
 	}
@@ -55,8 +49,6 @@ func openSession() {
 		session.LogLevel = discordgo.LogDebug
 		session.Debug = true
 	}
-
-	session.Identify.Intents = config.Intents
 
 	if err := session.Open(); err != nil {
 		panic(err)

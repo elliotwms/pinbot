@@ -2,59 +2,67 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/elliotwms/bot"
-	"github.com/elliotwms/bot/interactions"
-	"github.com/elliotwms/pinbot/internal/commands"
-	"github.com/elliotwms/pinbot/internal/config"
-	"github.com/elliotwms/pinbot/internal/eventhandlers"
+	"github.com/elliotwms/pinbot/internal/pinbot"
 )
 
 func main() {
-	config.Configure()
+	// build the logger and session
+	logLevel := getLogLevel(os.Getenv("LOG_LEVEL"))
+	slog.SetLogLoggerLevel(logLevel)
+	s := buildSession(logLevel)
 
-	slog.SetLogLoggerLevel(config.LogLevel)
+	// configure the bot
+	c := pinbot.NewConfig(s, mustGetEnv("APPLICATION_ID"))
+	c.HealthCheckAddr = os.Getenv("HEALTH_CHECK_ADDR")
+	c.GuildID = os.Getenv("GUILD_ID")
+	c.Logger = slog.Default()
 
-	s, err := discordgo.New("Bot " + config.Token)
+	// listen for signals
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+
+	// run the bot
+	if err := pinbot.Run(c, ctx); err != nil {
+		slog.Error("completed with error", "error", err)
+		os.Exit(1)
+	}
+}
+
+func getLogLevel(s string) (l slog.Level) {
+	if s == "" {
+		return slog.LevelInfo
+	}
+
+	if err := l.UnmarshalText([]byte(s)); err != nil {
+		panic(err)
+	}
+
+	return l
+}
+
+func buildSession(l slog.Level) *discordgo.Session {
+	s, err := discordgo.New("Bot " + mustGetEnv("TOKEN"))
 	if err != nil {
 		panic(err)
 	}
 
 	// set the discord log level
-	if config.LogLevel == slog.LevelDebug {
+	if l <= slog.LevelDebug {
 		s.LogLevel = discordgo.LogDebug
 	}
+	return s
+}
 
-	r := interactions.NewRouter(
-		interactions.WithDeferredResponse(true),
-		interactions.WithLogger(slog.Default()),
-	)
-
-	b := bot.
-		New(config.ApplicationID, s).
-		WithLogger(slog.Default()).
-		WithRouter(r).
-		WithIntents(config.Intents).
-		WithHandler(eventhandlers.Ready).
-		WithMigrationEnabled(true).
-		WithApplicationCommand(commands.Pin, commands.PinMessageCommandHandler)
-
-	if config.HealthCheckAddr != "" {
-		b.WithHealthCheck(config.HealthCheckAddr)
+func mustGetEnv(s string) string {
+	token := os.Getenv(s)
+	if token == "" {
+		panic(fmt.Sprintf("Missing '%s'", s))
 	}
-
-	if config.GuildID != "" {
-		b.WithGuildID(config.GuildID)
-	}
-
-	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
-
-	if err := b.Build().Run(ctx); err != nil {
-		os.Exit(1)
-	}
+	return token
 }
