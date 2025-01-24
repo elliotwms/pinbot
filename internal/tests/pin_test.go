@@ -12,11 +12,11 @@ func TestPin(t *testing.T) {
 		the_message_is_posted()
 
 	when.
-		the_pin_command_is_sent_for_the_message()
+		a_pin_interaction_is_created()
 
 	then.
 		a_pin_message_should_be_posted_in_the_last_channel().and().
-		the_bot_should_successfully_acknowledge_the_pin()
+		the_bot_should_acknowledge_the_pin()
 }
 
 func TestPinGeneralPinsChannel(t *testing.T) {
@@ -28,11 +28,11 @@ func TestPinGeneralPinsChannel(t *testing.T) {
 		the_message_is_posted()
 
 	when.
-		the_pin_command_is_sent_for_the_message()
+		a_pin_interaction_is_created()
 
 	then.
 		a_pin_message_should_be_posted_in_the_last_channel().
-		the_bot_should_successfully_acknowledge_the_pin()
+		the_bot_should_acknowledge_the_pin()
 }
 
 func TestPinSpecificPinsChannel(t *testing.T) {
@@ -45,11 +45,11 @@ func TestPinSpecificPinsChannel(t *testing.T) {
 		the_message_is_posted()
 
 	when.
-		the_pin_command_is_sent_for_the_message()
+		a_pin_interaction_is_created()
 
 	then.
 		a_pin_message_should_be_posted_in_the_last_channel().and().
-		the_bot_should_successfully_acknowledge_the_pin()
+		the_bot_should_acknowledge_the_pin()
 }
 
 func TestPinAlreadyPinned(t *testing.T) {
@@ -61,7 +61,7 @@ func TestPinAlreadyPinned(t *testing.T) {
 		the_message_is_already_marked_as_pinned()
 
 	when.
-		the_pin_command_is_sent_for_the_message()
+		a_pin_interaction_is_created()
 
 	then.
 		the_bot_should_respond_with_message_containing("🔄 Message already pinned")
@@ -78,11 +78,11 @@ func TestPinWithImage(t *testing.T) {
 		the_message_has_n_attachments(1)
 
 	when.
-		the_pin_command_is_sent_for_the_message()
+		a_pin_interaction_is_created()
 
 	then.
 		a_pin_message_should_be_posted_in_the_last_channel().and().
-		the_bot_should_successfully_acknowledge_the_pin().and().
+		the_bot_should_acknowledge_the_pin().and().
 		the_pin_message_should_have_n_embeds(1).and().
 		the_pin_message_should_have_an_image_embed()
 }
@@ -98,11 +98,11 @@ func TestPinWithMultipleImage(t *testing.T) {
 		the_message_is_posted()
 
 	when.
-		the_pin_command_is_sent_for_the_message()
+		a_pin_interaction_is_created()
 
 	then.
 		a_pin_message_should_be_posted_in_the_last_channel().and().
-		the_bot_should_successfully_acknowledge_the_pin().and().
+		the_bot_should_acknowledge_the_pin().and().
 		the_pin_message_should_have_n_embeds(2).and().
 		the_pin_message_should_have_n_embeds_with_image_url(2)
 }
@@ -117,11 +117,11 @@ func TestPinWithFile(t *testing.T) {
 		the_message_is_posted()
 
 	when.
-		the_pin_command_is_sent_for_the_message()
+		a_pin_interaction_is_created()
 
 	then.
 		a_pin_message_should_be_posted_in_the_last_channel().and().
-		the_bot_should_successfully_acknowledge_the_pin().and().
+		the_bot_should_acknowledge_the_pin().and().
 		the_pin_message_should_have_n_embeds(1).and().
 		the_pin_message_should_have_n_embeds_with_image_url(0)
 }
@@ -137,24 +137,10 @@ func TestPinPersistsEmbeds(t *testing.T) {
 		the_message_has_n_embeds(1) // account for delay in link embed arriving (via MESSAGE_UPDATE)
 
 	when.
-		the_pin_command_is_sent_for_the_message()
+		a_pin_interaction_is_created()
 
 	then.
-		the_bot_should_successfully_acknowledge_the_pin().and().
+		the_bot_should_acknowledge_the_pin().and().
 		a_pin_message_should_be_posted_in_the_last_channel().and().
 		the_pin_message_should_have_n_embeds(2) // the pin embed + link
-}
-
-func TestPin_StaleCommand(t *testing.T) {
-	given, when, then := NewPinStage(t)
-
-	given.
-		a_stale_command()
-
-	when.
-		the_stale_command_is_triggered()
-
-	then.
-		the_bot_should_respond_with_message_containing("This command is no longer supported").and().
-		the_stale_command_should_be_deleted()
 }

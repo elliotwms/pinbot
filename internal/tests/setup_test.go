@@ -1,28 +1,35 @@
 package tests
 
 import (
+	"fmt"
+	"log/slog"
 	"os"
 	"testing"
 
 	"github.com/bwmarrin/discordgo"
-	pkgfakediscord "github.com/elliotwms/fakediscord/pkg/fakediscord"
+	"github.com/bwmarrin/snowflake"
+	"github.com/elliotwms/fakediscord/pkg/fakediscord"
 )
 
 const testGuildName = "Pinbot Integration Testing"
-const testAppID = "1290742494824366183"
-const testToken = "bot"
 
 var (
 	session     *discordgo.Session
 	testGuildID string
-	fakediscord *pkgfakediscord.Client
 )
 
-func TestMain(m *testing.M) {
-	pkgfakediscord.Configure("http://localhost:8080/")
-	fakediscord = pkgfakediscord.NewClient(testToken)
+var node *snowflake.Node
 
-	openSession()
+func TestMain(m *testing.M) {
+	fakediscord.Configure("http://localhost:8080/")
+
+	if os.Getenv("TEST_DEBUG") != "" {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
+
+	node, _ = snowflake.NewNode(0)
+
+	openSession("bot")
 
 	code := m.Run()
 
@@ -31,9 +38,9 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func openSession() {
+func openSession(token string) {
 	var err error
-	session, err = discordgo.New("Bot " + testToken)
+	session, err = discordgo.New(fmt.Sprintf("Bot %s", token))
 	if err != nil {
 		panic(err)
 	}
@@ -43,11 +50,6 @@ func openSession() {
 		session.Debug = true
 	}
 
-	session.Identify.Intents = discordgo.IntentsGuilds |
-		discordgo.IntentsGuildMessages |
-		discordgo.IntentsGuildMessageReactions
-
-	// session is used for asserting on events from fakediscord
 	if err := session.Open(); err != nil {
 		panic(err)
 	}
