@@ -5,8 +5,8 @@ github.com/bwmarrin/snowflake v0.3.0/go.mod h1:NdZxfVWX+oR6y2K0o6qAYv6gIOP9rjG0/
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/elliotwms/bot v0.3.33 h1:McFeMu0fMssxDkkxTOxWpc97G7zAQKRsX3k9cnM3G7w=
-github.com/elliotwms/bot v0.3.33/go.mod h1:2laSFmgz3PLUuSLxbwqAocRRsM02CgPbhOKCgJdHngw=
+github.com/elliotwms/bot v0.3.34 h1:MswUwjkgZYa+cb9jqhtfkL4hCwVJ7858AUl8udwNpvs=
+github.com/elliotwms/bot v0.3.34/go.mod h1:2laSFmgz3PLUuSLxbwqAocRRsM02CgPbhOKCgJdHngw=
 github.com/elliotwms/fakediscord v0.18.2 h1:EN1JeyhMMPpZf+UnZMvROjhuzsAM+z4nw9bVseakcjo=
 github.com/elliotwms/fakediscord v0.18.2/go.mod h1:diPjfnMTjg73Izwl5pHMvGoGuOL8VSsMVt2ugFhfCos=
 github.com/gorilla/websocket v1.4.2/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
