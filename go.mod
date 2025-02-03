@@ -2,6 +2,8 @@ module github.com/elliotwms/pinbot
 
 go 1.23
 
+replace github.com/bwmarrin/discordgo => github.com/elliotwms/discordgo v0.23.3-0.20250129005426-fecefc6e5375
+
 require (
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/bwmarrin/snowflake v0.3.0

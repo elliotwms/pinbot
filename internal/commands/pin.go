@@ -3,10 +3,8 @@ package commands
 import (
 	"context"
 	"fmt"
-	"log/slog"
-	"time"
-
 	"github.com/bwmarrin/discordgo"
+	"log/slog"
 )
 
 const (
@@ -60,13 +58,24 @@ func PinMessageCommandHandler(s *discordgo.Session, i *discordgo.InteractionCrea
 	log = log.With("target_channel_id", targetChannel.ID)
 
 	// build the rich embed pin message
-	pinMessage := buildPinMessage(sourceChannel, m, i.Member.User)
+	forward := &discordgo.MessageSend{
+		Reference: m.Forward(),
+	}
 
-	// send the pin message
 	log.Debug("Sending pin message")
-	pin, err := s.ChannelMessageSendComplex(targetChannel.ID, pinMessage, discordgo.WithContext(ctx))
+	pin, err := s.ChannelMessageSendComplex(targetChannel.ID, forward, discordgo.WithContext(ctx))
 	if err != nil {
 		log.Error("Could not send pin message", "error", err)
+		return respond(ctx, s, i.Interaction, "🙅 Could not send pin message. Please ensure bot has permission to post in "+targetChannel.Mention())
+	}
+
+	// build a secondary info message to accompany the forward
+	infoMessage := buildPinInfoMessage(sourceChannel, m, pin, i.Member.User)
+
+	log.Debug("Sending pin info message")
+	_, err = s.ChannelMessageSendComplex(targetChannel.ID, infoMessage, discordgo.WithContext(ctx))
+	if err != nil {
+		log.Error("Could not send info message", "error", err)
 		return respond(ctx, s, i.Interaction, "🙅 Could not send pin message. Please ensure bot has permission to post in "+targetChannel.Mention())
 	}
 
@@ -97,68 +106,39 @@ func url(guildID, channelID, messageID string) string {
 	)
 }
 
-func buildPinMessage(sourceChannel *discordgo.Channel, m *discordgo.Message, pinnedBy *discordgo.User) *discordgo.MessageSend {
-	fields := []*discordgo.MessageEmbedField{
-		{
-			Name:   "Channel",
-			Value:  sourceChannel.Mention(),
-			Inline: true,
-		},
-	}
-
-	u := url(sourceChannel.GuildID, m.ChannelID, m.ID)
+func buildPinInfoMessage(sourceChannel *discordgo.Channel, m *discordgo.Message, pin *discordgo.Message, pinnedBy *discordgo.User) *discordgo.MessageSend {
+	u := url(sourceChannel.GuildID, pin.ChannelID, pin.ID)
 	embed := &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
 			Name:    m.Author.Username,
 			IconURL: m.Author.AvatarURL(""),
 			URL:     u,
 		},
-		Title:       "📌 Pinned",
-		Color:       pinMessageColor,
-		Description: m.Content,
-		URL:         u,
-		Timestamp:   m.Timestamp.Format(time.RFC3339),
+		Title: "📌 Pinned",
+		Color: pinMessageColor,
+		URL:   u,
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:   "Channel",
+				Value:  sourceChannel.Mention(),
+				Inline: true,
+			},
+		},
 	}
 
 	if pinnedBy != nil {
-		fields = append(fields, &discordgo.MessageEmbedField{
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
 			Name:   "Pinned by",
 			Value:  pinnedBy.Mention(),
 			Inline: true,
 		})
 	}
 
-	embed.Fields = fields
-
-	pinMessage := &discordgo.MessageSend{
-		Embeds: []*discordgo.MessageEmbed{embed},
+	return &discordgo.MessageSend{
+		Embeds: []*discordgo.MessageEmbed{
+			embed,
+		},
 	}
-
-	// If there are multiple attachments then add them to separate embeds
-	for i, a := range m.Attachments {
-		if a.Width == 0 || a.Height == 0 {
-			// only embed images
-			continue
-		}
-		e := &discordgo.MessageEmbedImage{URL: a.URL}
-
-		if i == 0 {
-			// add the first image to the existing embed
-			pinMessage.Embeds[0].Image = e
-		} else {
-			// add any other images to their own embed
-			pinMessage.Embeds = append(pinMessage.Embeds, &discordgo.MessageEmbed{
-				Type:  discordgo.EmbedTypeImage,
-				Color: pinMessageColor,
-				Image: e,
-			})
-		}
-	}
-
-	// preserve the existing embeds
-	pinMessage.Embeds = append(pinMessage.Embeds, m.Embeds...)
-
-	return pinMessage
 }
 
 func isAlreadyPinned(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, m *discordgo.Message) (bool, error) {
