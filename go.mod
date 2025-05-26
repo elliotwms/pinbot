@@ -3,7 +3,7 @@ module github.com/elliotwms/pinbot
 go 1.23
 
 require (
-	github.com/bwmarrin/discordgo v0.28.1
+	github.com/bwmarrin/discordgo v0.29.0
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/elliotwms/bot v0.3.34
 	github.com/elliotwms/fakediscord v0.18.2
