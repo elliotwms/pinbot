@@ -6,7 +6,7 @@ require (
 	github.com/bwmarrin/discordgo v0.29.0
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/elliotwms/bot v0.3.34
-	github.com/elliotwms/fakediscord v0.20.1
+	github.com/elliotwms/fakediscord v0.20.3
 	github.com/neilotoole/slogt v1.1.0
 	github.com/stretchr/testify v1.11.1
 )
